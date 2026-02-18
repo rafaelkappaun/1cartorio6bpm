@@ -1,0 +1,371 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>6º BPM - Gestão de Custódia</title>
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .bg-pmpr { background-color: #1a3a2a; }
+        .card-shadow { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .nav-tabs .nav-link { color: #495057; font-weight: 500; border: none; padding: 1rem; cursor: pointer; }
+        .nav-tabs .nav-link.active { border-bottom: 3px solid #1a3a2a; color: #1a3a2a; background: none; }
+        .header-oficial { background: white; border-bottom: 3px solid #1a3a2a; padding: 12px 0; }
+        .search-bar { border-radius: 20px 0 0 20px; padding-left: 40px; }
+        .search-icon { position: absolute; left: 15px; top: 10px; color: #6c757d; z-index: 10; }
+        .badge-vara { background-color: #f8f9fa; color: #1a3a2a; border-left: 4px solid #1a3a2a; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+{{ labels_json|json_script:"labels-data" }}
+{{ valores_json|json_script:"valores-data" }}
+
+<header class="header-oficial mb-4 shadow-sm">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <img src="{% static 'img/brasao_pmpr.svg' %}" style="height: 80px;" class="me-3">
+            <div>
+                <h5 class="mb-0 fw-bold">6º BATALHÃO DE POLÍCIA MILITAR</h5>
+                <small class="text-muted">Gestão de Custódia - Cascavel/PR</small>
+            </div>
+        </div>
+        
+        <div class="w-50 px-4 text-center">
+            <form method="GET" action="{% url 'painel' %}" class="input-group">
+                <div class="position-relative flex-grow-1">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" name="busca_bou" class="form-control search-bar" placeholder="Buscar por nº do BOU..." value="{{ busca_termo }}">
+                </div>
+                <button class="btn btn-success px-4" type="submit">Pesquisar</button>
+            </form>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'relatorio_final' %}" target="_blank" class="btn btn-sm btn-outline-dark fw-bold"><i class="bi bi-printer"></i> GESTÃO</a>
+            <a href="{% url 'relatorio_queima' %}" target="_blank" class="btn btn-sm btn-outline-danger fw-bold"><i class="bi bi-fire"></i> QUEIMA</a>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    {% if messages %}{% for m in messages %}
+        <div class="alert alert-{{ m.tags }} alert-dismissible fade show border-0 shadow-sm border-start border-4">
+            {{ m }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}{% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card card-shadow p-3 h-100 text-center">
+                <h6 class="fw-bold mb-3 text-muted small uppercase">Estoque Físico (Aguardando Queima)</h6>
+                <div style="height:200px;"><canvas id="graficoDrogas"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card card-shadow p-4 h-100 border-top border-4 border-success">
+                <h5 class="fw-bold text-success mb-3 small"><i class="bi bi-plus-circle"></i> NOVO REGISTRO DE APREENSÃO</h5>
+                <form method="POST" action="{% url 'registrar' %}" class="row g-3">
+    {% csrf_token %}
+    
+    <div class="col-md-3">
+        <label class="form-label fw-bold small">Número do BOU</label>
+        <input type="text" name="bou" class="form-control" placeholder="2026/..." required>
+    </div>
+    
+    <div class="col-md-6">
+        <label class="form-label fw-bold small">Noticiado / Réu</label>
+        <input type="text" name="noticiado" class="form-control" placeholder="NOME COMPLETO" required>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label fw-bold small">Nº do Processo (Projudi)</label>
+        <input type="text" name="processo" class="form-control" placeholder="0001234-...">
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label fw-bold small">Nº do Vestígio (Lacre)</label>
+        <input type="text" name="numero_vestigio" class="form-control" placeholder="LACRE">
+    </div>
+
+    <div class="col-md-5">
+        <label class="form-label fw-bold small">Policial que Entregou</label>
+        <input type="text" name="policial_entrega" class="form-control" placeholder="POSTO/GRAD NOME">
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold small">Vara Criminal Destino</label>
+        <select name="vara" class="form-select" required>
+            <option value="">Selecione...</option>
+            {% for valor, nome in vara_choices %} <option value="{{ valor }}">{{ nome }}</option>
+            {% endfor %}
+            <option value="VARA_01">1ª Vara Criminal</option>
+            <option value="VARA_02">2ª Vara Criminal</option>
+            <option value="VARA_03">3ª Vara Criminal</option>
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold small">Substância</label>
+        <select name="substancia" class="form-select" required>
+            <option value="MACONHA">Maconha</option>
+            <option value="COCAINA">Cocaína</option>
+            <option value="CRACK">Crack</option>
+            <option value="PE_MACONHA">Pé de Maconha</option>
+            <option value="SINTETICA">Droga Sintética</option>
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold small">Peso/Qtd Estimado</label>
+        <div class="input-group">
+            <input type="number" step="0.01" name="peso_estimado" class="form-control" required>
+            <select name="unidade" class="form-select" style="max-width: 100px;">
+                <option value="G">g</option>
+                <option value="U">un</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <label class="form-label fw-bold small">Descrição / Observações</label>
+        <textarea name="observacao" class="form-control" rows="2" placeholder="Detalhes da embalagem, estado do material, etc."></textarea>
+    </div>
+
+    <div class="col-12 text-end">
+        <hr>
+        <button type="submit" class="btn btn-success px-5 fw-bold">
+            <i class="bi bi-save"></i> FINALIZAR CADASTRO
+        </button>
+    </div>
+</form>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4 bg-white rounded shadow-sm px-3 border-0">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pendentes">
+                <i class="bi bi-clock-history"></i> Conferência <span class="badge bg-danger">{{ pendentes.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cofre">
+                <i class="bi bi-safe"></i> No Cofre <span class="badge bg-warning text-dark">{{ no_cofre.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-queima">
+                <i class="bi bi-fire"></i> Pronto Queima <span class="badge bg-success">{{ prontos.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-historico">
+                <i class="bi bi-archive"></i> Histórico / Varas
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content pb-5">
+        <div class="tab-pane fade show active" id="tab-pendentes">
+            <div class="row">
+                {% for item in pendentes %}
+                <div class="col-md-4 mb-3">
+                    <div class="card card-shadow p-3 border-start border-4 border-danger">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="fw-bold">BOU: {{ item.bou }}</h6>
+                            <span class="badge bg-light text-dark border">{{ item.vara }}</span>
+                        </div>
+                        <p class="small text-muted mb-3">{{ item.get_substancia_display }} | Est: {{ item.peso_estimado }}</p>
+                        <button class="btn btn-dark btn-sm w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#conf{{item.id}}">CONFERIR E PESAR</button>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="conf{{item.id}}" tabindex="-1">
+                    <form class="modal-dialog modal-content" method="POST" action="{% url 'conferir' item.id %}">
+                        {% csrf_token %}
+                        <div class="modal-header bg-dark text-white"><h5>Conferência BOU {{ item.bou }}</h5></div>
+                        <div class="modal-body">
+                            <label class="fw-bold small">Peso Real na Balança:</label>
+                            <input type="text" name="peso_real" class="form-control form-control-lg mb-3" required>
+                            <label class="fw-bold small">Nº da Caixa:</label>
+                            <input type="text" name="caixa" class="form-control" placeholder="Ex: 01" required>
+                        </div>
+                        <div class="modal-footer"><button class="btn btn-primary w-100">FINALIZAR E GUARDAR</button></div>
+                    </form>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5 text-muted">Nenhum item aguardando conferência.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-cofre">
+            <div class="card card-shadow overflow-hidden">
+                <table class="table table-hover align-middle mb-0 text-center">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Localização</th><th>BOU</th><th>Substância</th><th>Peso Real</th><th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in no_cofre %}
+                        <tr>
+                            <td><span class="badge bg-primary">CAIXA {{ item.caixa }}</span></td>
+                            <td class="fw-bold">{{ item.bou }}</td>
+                            <td>{{ item.get_substancia_display }}</td>
+                            <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#oficio{{item.id}}">VINCULAR OFÍCIO</button>
+                            </td>
+                        </tr>
+                        <div class="modal fade" id="oficio{{item.id}}" tabindex="-1">
+                            <form class="modal-dialog modal-content" method="POST" action="{% url 'vincular_oficio' item.id %}">
+                                {% csrf_token %}
+                                <div class="modal-header bg-success text-white"><h5>Autorização Judicial - {{ item.bou }}</h5></div>
+                                <div class="modal-body">
+                                    <label class="fw-bold small">Nº do Ofício / Decisão:</label>
+                                    <input type="text" name="n_oficio" class="form-control" placeholder="Ex: 123/2026-1VC" required>
+                                </div>
+                                <div class="modal-footer"><button class="btn btn-success w-100">AUTORIZAR QUEIMA</button></div>
+                            </form>
+                        </div>
+                        {% empty %}
+                        <tr><td colspan="5" class="py-5 text-muted">Cofre vazio.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-queima">
+            {% regroup prontos by lote as lotes_list %}
+            {% for lote in lotes_list %}
+            <div class="card card-shadow mb-4 border-start border-4 border-danger">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-danger">LOTE: {{ lote.grouper }}</h6>
+                    <form method="POST" action="{% url 'finalizar_lote' %}" onsubmit="return confirm('Confirmar incineração definitiva?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="lote" value="{{ lote.grouper }}">
+                        <button class="btn btn-danger btn-sm fw-bold">CONCLUIR INCINERAÇÃO</button>
+                    </form>
+                </div>
+                <table class="table table-sm mb-0">
+                    <thead><tr class="text-center"><th>BOU</th><th>Ofício</th><th>Substância</th><th>Peso</th></tr></thead>
+                    <tbody>
+                        {% for item in lote.list %}
+                        <tr class="text-center">
+                            <td class="fw-bold">{{ item.bou }}</td>
+                            <td>{{ item.n_oficio }}</td>
+                            <td>{{ item.get_substancia_display }}</td>
+                            <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% empty %}
+            <div class="text-center py-5 text-muted">Nenhum lote pronto para queima.</div>
+            {% endfor %}
+        </div>
+
+       <div class="tab-pane fade" id="tab-historico">
+    <div class="card card-shadow p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0"><i class="bi bi-archive"></i> Histórico de Incineração</h5>
+            
+            <a href="{% url 'relatorio_forum' %}" target="_blank" class="btn btn-dark fw-bold shadow-sm">
+                <i class="bi bi-printer"></i> IMPRIMIR TUDO (GERAL)
+            </a>
+        </div>
+
+        {% regroup incinerados by vara as vara_list %}
+
+        {% for v in vara_list %}
+        <div class="mb-5 shadow-sm border rounded overflow-hidden">
+            <div class="p-3 d-flex justify-content-between align-items-center bg-light border-bottom">
+                <span class="fw-bold fs-5 text-primary">
+                    <i class="bi bi-bank"></i> {{ v.list.0.get_vara_display|upper }}
+                </span>
+                
+                <a href="{% url 'relatorio_forum' %}?vara={{ v.grouper }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold">
+                    <i class="bi bi-file-earmark-pdf"></i> Imprimir apenas {{ v.list.0.get_vara_display }}
+                </a>
+            </div>
+
+            <table class="table table-hover mb-0">
+                <thead class="table-dark small">
+                    <tr>
+                        <th>Incineração</th>
+                        <th>Processo</th>
+                        <th>Noticiado</th>
+                        <th>BOU</th>
+                        <th>Substância</th>
+                        <th>Peso Final</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in v.list %}
+                    <tr class="small">
+                        <td>{{ item.data_conferencia|date:"d/m/Y" }}</td>
+                        <td class="fw-bold">{{ item.processo }}</td>
+                        <td>{{ item.noticiado|upper }}</td>
+                        <td>{{ item.bou }}</td>
+                        <td>{{ item.get_substancia_display }}</td>
+                        <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% empty %}
+            <p class="text-center py-5">Nenhum item incinerado no histórico.</p>
+        {% endfor %}
+    </div>
+</div>
+    </div>
+</div>
+
+<script>
+    // Gráfico
+    const ctx = document.getElementById('graficoDrogas').getContext('2d');
+    const labels = JSON.parse(document.getElementById('labels-data').textContent);
+    const valores = JSON.parse(document.getElementById('valores-data').textContent);
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: ['#1a3a2a','#198754','#dc3545','#ffc107','#0d6efd'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+            cutout: '70%'
+        }
+    });
+
+    // Lógica de Unidades
+    document.getElementById('id_substancia').addEventListener('change', function() {
+        const uni = document.getElementById('id_unidade');
+        const lab = document.getElementById('label_peso');
+        if(this.value === 'PE_MACONHA') {
+            uni.value = 'U'; lab.innerText = "Qtd de Pés";
+        } else {
+            uni.value = 'G'; lab.innerText = "Peso Estimado (g)";
+        }
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

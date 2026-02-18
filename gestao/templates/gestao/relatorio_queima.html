@@ -1,0 +1,91 @@
+{% load static %} 
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Incineração - 6º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; background: white; }
+            .container { width: 100%; max-width: 100%; }
+        }
+        body { background-color: #f8f9fa; }
+        .folha-a4 {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 10mm auto;
+            border: 1px solid #ddd;
+        }
+        .header-rep { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container no-print mt-3 text-center">
+    <button onclick="window.print()" class="btn btn-primary btn-lg">🖨️ IMPRIMIR RELATÓRIO OFICIAL</button>
+    <a href="{% url 'painel' %}" class="btn btn-secondary btn-lg">VOLTAR</a>
+</div>
+
+<div class="folha-a4">
+    <div class="header-rep d-flex align-items-center">
+        <img src="{% static '/img/brasao_pmpr.svg' %}" style="height: 80px;" class="me-3">
+        <div class="text-center w-100">
+            <h5 class="mb-0">ESTADO DO PARANÁ</h5>
+            <h5 class="mb-0">POLÍCIA MILITAR DO PARANÁ</h5>
+            <h6 class="mb-0">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL</h6>
+            <small>Setor de Custódia de Entorpecentes</small>
+        </div>
+    </div>
+
+    <h4 class="text-center fw-bold my-4">RELAÇÃO DE MATERIAL PARA INCINERAÇÃO</h4>
+    <p class="text-end small">Data do Relatório: {{ data_atual|date:"d/m/Y H:i" }}</p>
+
+    <table class="table table-bordered table-sm" style="font-size: 12px;">
+        <thead class="table-dark">
+            <tr>
+                <th>BOU</th>
+                <th>Substância</th>
+                <th>Peso Real</th>
+                <th>Vara Judicial</th>
+                <th>Ofício Autorizador</th>
+                <th>Lote</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.bou }}</td>
+                <td>{{ item.get_substancia_display|default:item.substancia }}</td>
+                <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                <td>{{ item.vara }}</td>
+                <td>{{ item.n_oficio }}</td>
+                <td>{{ item.lote }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">Nenhum material autorizado para queima no momento.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-5 pt-5">
+        <div class="row text-center">
+            <div class="col-6">
+                <div style="border-top: 1px solid #000; width: 80%; margin: 0 auto;"></div>
+                <p class="small">Responsável pela Custódia<br>6º BPM</p>
+            </div>
+            <div class="col-6">
+                <div style="border-top: 1px solid #000; width: 80%; margin: 0 auto;"></div>
+                <p class="small">Oficial de Logística/Comando<br>6º BPM</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
