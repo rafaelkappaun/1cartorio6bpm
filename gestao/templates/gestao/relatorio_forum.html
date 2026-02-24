@@ -3,99 +3,104 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório de Baixa Processual - 6º BPM</title>
+    <title>Certidão de Destruição - 6º BPM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { font-family: "Times New Roman", Times, serif; background-color: white; color: black; }
-        .folha-a4 { width: 210mm; margin: auto; padding: 20mm; min-height: 297mm; }
-        .header-doc { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-        .brasao { height: 80px; margin-bottom: 10px; }
-        .titulo-doc { font-weight: bold; text-align: center; text-decoration: underline; margin: 30px 0; text-transform: uppercase; }
+        /* Margens ideais para impressão A4 Paisagem */
+        @page { size: landscape; margin: 10mm; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; }
-        th, td { border: 1px solid #000 !important; padding: 5px; font-size: 9pt; vertical-align: middle; }
-        th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
+        body { font-family: "Times New Roman", Times, serif; color: #000; background: #fff; }
         
-        .vara-title { background-color: #000; color: #fff; padding: 5px 10px; font-weight: bold; margin-top: 20px; }
-        .assinatura-area { margin-top: 60px; text-align: center; }
+        .container-report { max-width: 98%; margin: auto; padding: 15px; }
+        
+        .header-doc { border-bottom: 3px double #1a3a2a; padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background-color: #f8f9fa !important; border: 1px solid #333 !important; padding: 8px; text-align: center; font-size: 0.85rem; }
+        td { border: 1px solid #333 !important; padding: 6px; font-size: 0.85rem; vertical-align: middle; }
+        
+        .vara-header { background-color: #e9ecef; border-left: 6px solid #1a3a2a; padding: 8px 15px; margin-top: 25px; }
+        
+        .assinatura-line { border-top: 1px solid #000; width: 80%; margin: 60px auto 10px auto; }
         
         @media print {
-            .no-print { display: none !important; }
-            .folha-a4 { border: none; margin: 0; width: 100%; padding: 10mm; }
+            .no-print { display: none; }
+            .page-break { page-break-after: always; }
         }
     </style>
 </head>
 <body>
 
-<div class="container no-print mt-3 text-center">
-    <button onclick="window.print()" class="btn btn-primary shadow-sm">🖨️ IMPRIMIR PARA O JUDICIÁRIO</button>
-    <a href="{% url 'painel' %}" class="btn btn-outline-dark shadow-sm">VOLTAR</a>
-</div>
-
-<div class="folha-a4">
-    <div class="header-doc">
-        <img src="{% static 'img/brasao_pmpr.svg' %}" style="height: 80px;" class="me-3">
-        <h6 class="mb-0 fw-bold">ESTADO DO PARANÁ</h6>
-        <h6 class="mb-0">POLÍCIA MILITAR - 5º COMANDO REGIONAL</h6>
-        <h6 class="mb-0">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR</h6>
+<div class="container-report">
+    <div class="header-doc row align-items-center">
+        <div class="col-1 text-center">
+            <img src="{% static 'img/brasao_pmpr.svg' %}" style="height: 70px;">
+        </div>
+        <div class="col-9 text-center">
+            <h4 class="fw-bold m-0 text-uppercase">Polícia Militar do Paraná</h4>
+            <h6 class="text-uppercase">6º Batalhão de Polícia Militar - Seção de Gestão de Custódia</h6>
+            <h5 class="mt-2 fw-bold text-decoration-underline">Certidão de Destruição de Entorpecentes</h5>
+        </div>
+        <div class="col-2 text-end small">
+            <p class="m-0"><b>Emissão:</b> {% now "d/m/Y" %}</p>
+            <p class="m-0"><b>Lote:</b> {{ itens.0.lote.identificador }}</p>
+        </div>
     </div>
 
-    <h5 class="titulo-doc">
-    CERTIDÃO DE DESTRUIÇÃO DE VESTÍGIOS (INCINERAÇÃO)<br>
-    {% if vara_selecionada %}
-        <small class="text-muted" style="text-decoration: none;">Competência: {{ itens.0.get_vara_display|upper }}</small>
-    {% else %}
-        <small class="text-muted" style="text-decoration: none;">Relatório Geral de Varas Criminais</small>
-    {% endif %}
-</h5>
+    <div class="my-4 p-2">
+        <p class="text-justify lh-lg">
+            Certifico, para os devidos fins de direito, que nesta data, em estrito cumprimento à autorização judicial, procedeu-se a destruição das substâncias entorpecentes abaixo relacionadas. O procedimento foi realizado sob a supervisão da equipe de custódia do 6º BPM, conforme os protocolos legais de preservação da cadeia de custódia.
+        </p>
+    </div>
 
-    <p style="text-indent: 50px; text-align: justify;">
-        Certificamos, para os devidos fins de instrução processual e baixa de bens apreendidos, que as substâncias entorpecentes abaixo relacionadas foram devidamente <strong>INCINERADAS</strong> por esta Unidade Policial Militar, conforme autorizações judiciais e laudos periciais vinculados.
-    </p>
-
-    {% regroup itens by get_vara_display as vara_list %}
+    {% regroup itens by noticiado.ocorrencia.vara as vara_list %}
 
     {% for vara in vara_list %}
-        <div class="vara-title">JUÍZO: {{ vara.grouper|upper }}</div>
-        <table>
+        <div class="vara-header shadow-sm">
+            <h6 class="fw-bold m-0 text-uppercase"><i class="bi bi-bank me-2"></i> Juízo: {{ vara.list.0.noticiado.ocorrencia.get_nome_vara_formal }}</h6>
+        </div>
+        
+        <table class="table-sm">
             <thead>
                 <tr>
-                    <th width="18%">PROCESSO</th>
-                    <th width="22%">NOTICIADO / RÉU</th>
-                    <th width="12%">BOU</th>
-                    <th width="18%">OFÍCIO / AUTORIZAÇÃO</th>
-                    <th width="12%">SUBSTÂNCIA</th>
-                    <th width="10%">PESO FINAL</th>
-                    <th width="8%">LOTE</th>
+                    <th style="width: 10%;">Data</th>
+                    <th style="width: 15%;">BOU</th>
+                    <th style="width: 20%;">Processo</th>
+                    <th style="width: 20%;">Noticiado</th>
+                    <th style="width: 15%;">Substância</th>
+                    <th style="width: 10%;">Peso</th>
+                    <th style="width: 10%;">Ofício</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in vara.list %}
                 <tr>
-                    <td class="fw-bold">{{ item.processo|default:"-" }}</td>
-                    <td>{{ item.noticiado|upper|default:"NÃO INFORMADO" }}</td>
-                    <td class="text-center">{{ item.bou }}</td>
+                    <td class="text-center">{{ item.data_incineracao|date:"d/m/Y" }}</td>
+                    <td class="text-center fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                    <td class="text-center">{{ item.noticiado.ocorrencia.processo }}</td>
+                    <td>{{ item.noticiado.nome|upper }}</td>
+                    <td class="text-center">{{ item.get_substancia_display }}</td>
+                    <td class="text-center fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
                     <td class="text-center">{{ item.n_oficio|default:"-" }}</td>
-                    <td>{{ item.get_substancia_display }}</td>
-                    <td class="text-end fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
-                    <td class="text-center">{{ item.lote }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    {% empty %}
-        <p class="text-center mt-5 text-muted italic">Nenhum registro de incineração encontrado para envio.</p>
     {% endfor %}
 
-    <div class="assinatura-area">
-        <p>Cascavel/PR, {{ data_hoje|date:"d" }} de {{ data_hoje|date:"F" }} de {{ data_hoje|date:"Y" }}.</p>
-        <div style="margin-top: 80px;">
-            <p class="mb-0">_________________________________________________________</p>
-            <p class="fw-bold mb-0">ENCARREGADO DA CUSTÓDIA DE ENTORPECENTES</p>
-            <p class="small">6º Batalhão de Polícia Militar - PMPR</p>
+    <div class="row mt-5">
+        <div class="col-6 text-center">
+            <div class="assinatura-line"></div>
+            <p class="fw-bold">Responsável pela Custódia - 6º BPM</p>
+        </div>
+        <div class="col-6 text-center">
+            <div class="assinatura-line"></div>
+            <p class="fw-bold">Oficial Supervisor - PMPR</p>
         </div>
     </div>
 </div>
 
+<script>window.print();</script>
 </body>
 </html>

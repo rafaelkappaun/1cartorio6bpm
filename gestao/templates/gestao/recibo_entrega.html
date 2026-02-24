@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @media print { .no-print { display: none; } }
+        body { font-family: Courier, monospace; padding: 20px; line-height: 1.2; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .titulo { font-weight: bold; font-size: 18px; margin: 10px 0; }
+        .content { margin-bottom: 30px; }
+        .campo { font-weight: bold; margin-top: 10px; }
+        .assinaturas { margin-top: 80px; display: flex; justify-content: space-around; }
+        .box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; }
+    </style>
+</head>
+<body onload="window.print();">
+    <div class="header">
+        <div>ESTADO DO PARANÁ</div>
+        <div>POLÍCIA MILITAR DO PARANÁ - 6º BPM</div>
+        <div class="titulo">COMPROVANTE DE ENTREGA DE MATERIAL CUSTODIADO</div>
+    </div>
+
+    <div class="content">
+        <p><strong>BOU:</strong> {{ obj.bou }} &nbsp;&nbsp;&nbsp; <strong>PROCESSO:</strong> {{ obj.processo }}</p>
+        <p><strong>VARA:</strong> {{ obj.get_vara_display }}</p>
+        <p><strong>DATA REGISTRO:</strong> {{ obj.data_entrada|date:"d/m/Y H:i" }}</p>
+        <hr>
+        <p class="campo">DADOS DO RESPONSÁVEL PELA ENTREGA:</p>
+        <p>{{ obj.get_policial_graduacao_display }} {{ obj.policial_nome }}</p>
+        
+        <p class="campo">MATERIAIS/VESTÍGIOS:</p>
+        <table width="100%" border="1" cellspacing="0" cellpadding="5">
+            <thead>
+                <tr>
+                    <th>NOTICIADO</th>
+                    <th>SUBSTÂNCIA</th>
+                    <th>PESO/QTD</th>
+                    <th>LACRE/VESTÍGIO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for noticiado in obj.noticiados.all %}
+                    {% for item in noticiado.materiais.all %}
+                    <tr>
+                        <td>{{ noticiado.nome }}</td>
+                        <td>{{ item.get_substancia_display }}</td>
+                        <td>{{ item.peso_estimado }} {{ item.get_unidade_display }}</td>
+                        <td>{{ item.numero_vestigio }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="assinaturas">
+        <div class="box">
+            <small>Responsável pela Entrega</small><br>
+            <strong>{{ obj.policial_nome }}</strong>
+        </div>
+        <div class="box">
+            <small>Recebido por (Gestão de Custódia)</small><br>
+            <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+        </div>
+    </div>
+
+    <div class="no-print" style="margin-top: 50px; text-align: center;">
+        <button onclick="window.print()">Imprimir Novamente</button>
+        <button onclick="window.close()">Fechar Janela</button>
+    </div>
+</body>
+</html>

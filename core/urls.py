@@ -24,9 +24,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.painel_principal, name='painel'),
     
+    
     # Operações de Material
     path('registrar/', views.registrar_entrada, name='registrar'),
-    path('editar/<int:id>/', views.editar_item_rapido, name='editar_item'),
     path('conferir/<int:id>/', views.confirmar_conferencia, name='conferir'),
     path('vincular/<int:id>/', views.vincular_oficio, name='vincular_oficio'),
     path('finalizar-lote/', views.finalizar_lote, name='finalizar_lote'),
@@ -39,4 +39,5 @@ urlpatterns = [
     path('relatorio/', views.relatorio_final, name='relatorio_final'),
     path('relatorio-queima/', views.relatorio_queima, name='relatorio_queima'),
     path('relatorio-forum/', views.relatorio_forum, name='relatorio_forum'),
+    path('relatorio/recibo/<int:id>/', views.gerar_recibo, name='gerar_recibo'),
 ]

@@ -67,305 +67,429 @@
             </div>
         </div>
 
-        <div class="col-md-8">
-            <div class="card card-shadow p-4 h-100 border-top border-4 border-success">
-                <h5 class="fw-bold text-success mb-3 small"><i class="bi bi-plus-circle"></i> NOVO REGISTRO DE APREENSÃO</h5>
-                <form method="POST" action="{% url 'registrar' %}" class="row g-3">
-    {% csrf_token %}
-    
-    <div class="col-md-3">
-        <label class="form-label fw-bold small">Número do BOU</label>
-        <input type="text" name="bou" class="form-control" placeholder="2026/..." required>
-    </div>
-    
-    <div class="col-md-6">
-        <label class="form-label fw-bold small">Noticiado / Réu</label>
-        <input type="text" name="noticiado" class="form-control" placeholder="NOME COMPLETO" required>
-    </div>
-
-    <div class="col-md-3">
-        <label class="form-label fw-bold small">Nº do Processo (Projudi)</label>
-        <input type="text" name="processo" class="form-control" placeholder="0001234-...">
-    </div>
-
-    <div class="col-md-3">
-        <label class="form-label fw-bold small">Nº do Vestígio (Lacre)</label>
-        <input type="text" name="numero_vestigio" class="form-control" placeholder="LACRE">
-    </div>
-
-    <div class="col-md-5">
-        <label class="form-label fw-bold small">Policial que Entregou</label>
-        <input type="text" name="policial_entrega" class="form-control" placeholder="POSTO/GRAD NOME">
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label fw-bold small">Vara Criminal Destino</label>
-        <select name="vara" class="form-select" required>
-            <option value="">Selecione...</option>
-            {% for valor, nome in vara_choices %} <option value="{{ valor }}">{{ nome }}</option>
-            {% endfor %}
-            <option value="VARA_01">1ª Vara Criminal</option>
-            <option value="VARA_02">2ª Vara Criminal</option>
-            <option value="VARA_03">3ª Vara Criminal</option>
-        </select>
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label fw-bold small">Substância</label>
-        <select name="substancia" class="form-select" required>
-            <option value="MACONHA">Maconha</option>
-            <option value="COCAINA">Cocaína</option>
-            <option value="CRACK">Crack</option>
-            <option value="PE_MACONHA">Pé de Maconha</option>
-            <option value="SINTETICA">Droga Sintética</option>
-        </select>
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label fw-bold small">Peso/Qtd Estimado</label>
-        <div class="input-group">
-            <input type="number" step="0.01" name="peso_estimado" class="form-control" required>
-            <select name="unidade" class="form-select" style="max-width: 100px;">
-                <option value="G">g</option>
-                <option value="U">un</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="col-12">
-        <label class="form-label fw-bold small">Descrição / Observações</label>
-        <textarea name="observacao" class="form-control" rows="2" placeholder="Detalhes da embalagem, estado do material, etc."></textarea>
-    </div>
-
-    <div class="col-12 text-end">
-        <hr>
-        <button type="submit" class="btn btn-success px-5 fw-bold">
-            <i class="bi bi-save"></i> FINALIZAR CADASTRO
-        </button>
-    </div>
-</form>
+   <div class="col-md-8">
+    <div class="card card-shadow p-4 h-100 border-top border-4 border-success">
+        <h5 class="fw-bold text-success mb-3 small"><i class="bi bi-plus-circle"></i> NOVO REGISTRO DE APREENSÃO</h5>
+        <form method="POST" action="{% url 'registrar' %}" id="form-cadastro">
+            {% csrf_token %}
+            
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted">BOU</label>
+                    <input type="text" name="bou" id="input_bou" class="form-control fw-bold" value="2026/" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="small fw-bold text-muted">Nº Processo (Projudi)</label>
+                    <input type="text" name="processo" id="input_projudi" class="form-control" placeholder="0000000-00.0000.8.16.0000">
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted">Vara Criminal</label>
+                    <select name="vara" class="form-select" required>
+                        <option value="" disabled selected>Selecionar...</option>
+                        <option value="VARA_01">1ª Vara Criminal</option>
+                        <option value="VARA_02">2ª Vara Criminal</option>
+                        <option value="VARA_03">3ª Vara Criminal</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="small fw-bold text-muted">Policial Responsável</label>
+                    <input type="text" name="policial_nome" class="form-control" placeholder="NOME COMPLETO" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted">Graduação</label>
+                    <select name="policial_graduacao" class="form-select">
+                        <option value="SD">Soldado</option>
+                        <option value="CB">Cabo</option>
+                        <option value="3SGT">3º Sargento</option>
+                        <option value="2SGT">2º Sargento</option>
+                        <option value="1SGT">1º Sargento</option>
+                        <option value="SUB">Subtenente</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted">RG Policial</label>
+                    <input type="text" name="rg_policial" class="form-control" placeholder="Apenas números" maxlength="15" required>
+                </div>
             </div>
-        </div>
+            
+            <hr class="my-4">
+            
+            <div id="container-noticiados">
+                <div class="bloco-noticiado border p-3 mb-3 bg-light rounded shadow-sm">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="small fw-bold">Nome do Noticiado</label>
+                            <input type="text" name="noticiado_nome" class="form-control uppercase-input" placeholder="NOME COMPLETO" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small fw-bold">Substância</label>
+                            <select name="substancia" class="form-select select-substancia">
+                                {% for val, nome in drogas_lista %}
+                                <option value="{{ val }}">{{ nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small fw-bold">Peso/Qtd</label>
+                            <div class="input-group">
+                                <input type="text" name="peso_estimado" class="form-control mask-peso" placeholder="0,00">
+                                <select name="unidade" class="form-select select-unidade" style="max-width: 60px;">
+                                    <option value="G">g</option>
+                                    <option value="U">un</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small fw-bold">Nº Lacre/Vestígio</label>
+                            <input type="text" name="num_lacre" class="form-control" placeholder="Lacre">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarNoticiado()">
+                    <i class="bi bi-person-plus"></i> + Noticiado/Droga
+                </button>
+                <button type="submit" class="btn btn-success fw-bold px-5">SALVAR REGISTRO</button>
+            </div>
+        </form>
+    </div>
+</div>
+
     </div>
 
     <ul class="nav nav-tabs mb-4 bg-white rounded shadow-sm px-3 border-0">
-        <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pendentes">
-                <i class="bi bi-clock-history"></i> Conferência <span class="badge bg-danger">{{ pendentes.count }}</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cofre">
-                <i class="bi bi-safe"></i> No Cofre <span class="badge bg-warning text-dark">{{ no_cofre.count }}</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-queima">
-                <i class="bi bi-fire"></i> Pronto Queima <span class="badge bg-success">{{ prontos.count }}</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-historico">
-                <i class="bi bi-archive"></i> Histórico / Varas
-            </button>
-        </li>
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pendentes"><i class="bi bi-clock-history"></i> Conferência <span class="badge bg-danger">{{ pendentes.count }}</span></button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cofre"><i class="bi bi-safe"></i> No Cofre <span class="badge bg-warning text-dark">{{ no_cofre.count }}</span></button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-queima"><i class="bi bi-fire"></i> Pronto Queima <span class="badge bg-success">{{ prontos.count }}</span></button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-historico"><i class="bi bi-archive"></i> Histórico / Varas</button></li>
     </ul>
 
-    <div class="tab-content pb-5">
+    <div class="tab-content">
         <div class="tab-pane fade show active" id="tab-pendentes">
-            <div class="row">
-                {% for item in pendentes %}
-                <div class="col-md-4 mb-3">
-                    <div class="card card-shadow p-3 border-start border-4 border-danger">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="fw-bold">BOU: {{ item.bou }}</h6>
-                            <span class="badge bg-light text-dark border">{{ item.vara }}</span>
-                        </div>
-                        <p class="small text-muted mb-3">{{ item.get_substancia_display }} | Est: {{ item.peso_estimado }}</p>
-                        <button class="btn btn-dark btn-sm w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#conf{{item.id}}">CONFERIR E PESAR</button>
-                    </div>
-                </div>
-
-                <div class="modal fade" id="conf{{item.id}}" tabindex="-1">
-                    <form class="modal-dialog modal-content" method="POST" action="{% url 'conferir' item.id %}">
-                        {% csrf_token %}
-                        <div class="modal-header bg-dark text-white"><h5>Conferência BOU {{ item.bou }}</h5></div>
-                        <div class="modal-body">
-                            <label class="fw-bold small">Peso Real na Balança:</label>
-                            <input type="text" name="peso_real" class="form-control form-control-lg mb-3" required>
-                            <label class="fw-bold small">Nº da Caixa:</label>
-                            <input type="text" name="caixa" class="form-control" placeholder="Ex: 01" required>
-                        </div>
-                        <div class="modal-footer"><button class="btn btn-primary w-100">FINALIZAR E GUARDAR</button></div>
-                    </form>
-                </div>
-                {% empty %}
-                <div class="col-12 text-center py-5 text-muted">Nenhum item aguardando conferência.</div>
-                {% endfor %}
+    <div class="row">
+        {% for item in pendentes %}
+        <div class="col-md-4 mb-3">
+            <div class="card p-3 shadow-sm border-start border-4 border-danger">
+                <h6>BOU: {{ item.noticiado.ocorrencia.bou }}</h6>
+                <p class="mb-1">Réu: <strong>{{ item.noticiado.nome|upper }}</strong></p>
+                <p class="small text-muted mb-2">Substância: {{ item.get_substancia_display }} ({{ item.peso_estimado }} {{ item.get_unidade_display }})</p>
+                
+                <button type="button" class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#modalConferir{{ item.id }}">
+                    <i class="bi bi-shield-check"></i> CONFERIR
+                </button>
             </div>
         </div>
+
+        <div class="modal fade" id="modalConferir{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{% url 'conferir' item.id %}">
+            {% csrf_token %}
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Conferência - BOU: {{ item.noticiado.ocorrencia.bou }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+    <div class="alert alert-light border shadow-sm small">
+        <div class="row">
+            <div class="col-6"><strong>BOU:</strong> {{ item.noticiado.ocorrencia.bou }}</div>
+            <div class="col-6"><strong>Processo:</strong> {{ item.noticiado.ocorrencia.processo }}</div>
+            <div class="col-6"><strong>Noticiado:</strong> {{ item.noticiado.nome }}</div>
+            <div class="col-6"><strong>Lacre Inicial:</strong> {{ item.numero_vestigio }}</div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <label class="fw-bold small">Substância</label>
+            <input type="text" class="form-control" value="{{ item.get_substancia_display }}" disabled>
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">Peso Registrado</label>
+            <input type="text" class="form-control" value="{{ item.peso_estimado }} {{ item.get_unidade_display }}" disabled>
+        </div>
+        <div class="col-md-12">
+            <hr>
+            <label class="fw-bold small text-success">PESO REAL (Balança)</label>
+            <div class="input-group">
+                <input type="text" name="peso_real" class="form-control mask-peso" placeholder="0,00" required>
+                <span class="input-group-text">{{ item.get_unidade_display }}</span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">Caixa (Lote)</label>
+            <select name="lote_id" class="form-select" required>
+                {% for lote in todos_lotes %}
+                    <option value="{{ lote.id }}">{{ lote.identificador }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">Posição/Sacola</label>
+            <input type="text" name="posicao_sacola" class="form-control" placeholder="Ex: FEV-01" required>
+        </div>
+    </div>
+</div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success px-4 fw-bold">FINALIZAR CONFERÊNCIA</button>
+            </div>
+        </form>
+    </div>
+</div>
+        {% empty %}
+        <div class="col-12 text-center py-5 text-muted">Nenhuma pendência de conferência.</div>
+        {% endfor %}
+    </div>
+</div>
 
         <div class="tab-pane fade" id="tab-cofre">
-            <div class="card card-shadow overflow-hidden">
-                <table class="table table-hover align-middle mb-0 text-center">
-                    <thead class="bg-light">
-                        <tr>
-                            <th>Localização</th><th>BOU</th><th>Substância</th><th>Peso Real</th><th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in no_cofre %}
-                        <tr>
-                            <td><span class="badge bg-primary">CAIXA {{ item.caixa }}</span></td>
-                            <td class="fw-bold">{{ item.bou }}</td>
-                            <td>{{ item.get_substancia_display }}</td>
-                            <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#oficio{{item.id}}">VINCULAR OFÍCIO</button>
-                            </td>
-                        </tr>
-                        <div class="modal fade" id="oficio{{item.id}}" tabindex="-1">
-                            <form class="modal-dialog modal-content" method="POST" action="{% url 'vincular_oficio' item.id %}">
-                                {% csrf_token %}
-                                <div class="modal-header bg-success text-white"><h5>Autorização Judicial - {{ item.bou }}</h5></div>
-                                <div class="modal-body">
-                                    <label class="fw-bold small">Nº do Ofício / Decisão:</label>
-                                    <input type="text" name="n_oficio" class="form-control" placeholder="Ex: 123/2026-1VC" required>
-                                </div>
-                                <div class="modal-footer"><button class="btn btn-success w-100">AUTORIZAR QUEIMA</button></div>
-                            </form>
-                        </div>
-                        {% empty %}
-                        <tr><td colspan="5" class="py-5 text-muted">Cofre vazio.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="card card-shadow overflow-hidden">
+        <table class="table table-hover align-middle mb-0 text-center">
+            <thead class="bg-light">
+                <tr>
+                    <th>Caixa/Posição</th>
+                    <th>BOU / Processo</th>
+                    <th>Noticiado</th>
+                    <th>Substância</th>
+                    <th>Peso</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in no_cofre %}
+                <tr>
+                    <td>
+                        <span class="badge bg-primary">CX: {{ item.lote.identificador }}</span><br>
+                        <small class="text-muted fw-bold">{{ item.posicao_sacola }}</small>
+                    </td>
+                    <td class="text-start">
+    <div class="d-flex flex-column">
+        <span class="badge bg-dark mb-1" style="width: fit-content;">
+            BOU: {{ item.noticiado.ocorrencia.bou }}
+        </span>
+        <small class="text-muted fw-bold">
+            <i class="bi bi-file-earmark-text"></i> {{ item.noticiado.ocorrencia.processo }}
+        </small>
+    </div>
+</td>
+                    <td>{{ item.noticiado.nome|upper }}</td>
+                    <td>{{ item.get_substancia_display }}</td>
+                    <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#oficio{{item.id}}">
+                            <i class="bi bi-file-earmark-check"></i>
+                        </button>
+                    </td>
+                </tr>
 
-        <div class="tab-pane fade" id="tab-queima">
-            {% regroup prontos by lote as lotes_list %}
-            {% for lote in lotes_list %}
-            <div class="card card-shadow mb-4 border-start border-4 border-danger">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h6 class="fw-bold mb-0 text-danger">LOTE: {{ lote.grouper }}</h6>
-                    <form method="POST" action="{% url 'finalizar_lote' %}" onsubmit="return confirm('Confirmar incineração definitiva?')">
+                <div class="modal fade" id="oficio{{item.id}}" tabindex="-1">
+                    <form class="modal-dialog modal-content" method="POST" action="{% url 'vincular_oficio' item.id %}">
                         {% csrf_token %}
-                        <input type="hidden" name="lote" value="{{ lote.grouper }}">
-                        <button class="btn btn-danger btn-sm fw-bold">CONCLUIR INCINERAÇÃO</button>
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title">Autorização Judicial - {{ item.noticiado.ocorrencia.bou }}</h5>
+                        </div>
+                        <div class="modal-body">
+                            <label class="fw-bold small">Nº do Ofício / Decisão:</label>
+                            <input type="text" name="n_oficio" class="form-control" placeholder="Ex: 123/2026-1VC" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success w-100">AUTORIZAR QUEIMA</button>
+                        </div>
                     </form>
                 </div>
-                <table class="table table-sm mb-0">
-                    <thead><tr class="text-center"><th>BOU</th><th>Ofício</th><th>Substância</th><th>Peso</th></tr></thead>
-                    <tbody>
-                        {% for item in lote.list %}
-                        <tr class="text-center">
-                            <td class="fw-bold">{{ item.bou }}</td>
-                            <td>{{ item.n_oficio }}</td>
-                            <td>{{ item.get_substancia_display }}</td>
-                            <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% empty %}
-            <div class="text-center py-5 text-muted">Nenhum lote pronto para queima.</div>
-            {% endfor %}
-        </div>
+                {% endfor %} </tbody>
+        </table>
+    </div>
+</div>
 
-       <div class="tab-pane fade" id="tab-historico">
-    <div class="card card-shadow p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold mb-0"><i class="bi bi-archive"></i> Histórico de Incineração</h5>
-            
-            <a href="{% url 'relatorio_forum' %}" target="_blank" class="btn btn-dark fw-bold shadow-sm">
-                <i class="bi bi-printer"></i> IMPRIMIR TUDO (GERAL)
-            </a>
-        </div>
-
-        {% regroup incinerados by vara as vara_list %}
-
-        {% for v in vara_list %}
-        <div class="mb-5 shadow-sm border rounded overflow-hidden">
-            <div class="p-3 d-flex justify-content-between align-items-center bg-light border-bottom">
-                <span class="fw-bold fs-5 text-primary">
-                    <i class="bi bi-bank"></i> {{ v.list.0.get_vara_display|upper }}
-                </span>
+        <div class="tab-pane fade" id="tab-queima">
+    {% regroup prontos by lote as lotes_list %}
+    
+    {% for lote in lotes_list %}
+        <div class="card card-shadow mb-4 border-start border-4 border-danger">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-danger">LOTE: {{ lote.grouper.identificador }}</h6>
                 
-                <a href="{% url 'relatorio_forum' %}?vara={{ v.grouper }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold">
-                    <i class="bi bi-file-earmark-pdf"></i> Imprimir apenas {{ v.list.0.get_vara_display }}
-                </a>
+                <form method="POST" action="{% url 'finalizar_lote' %}" onsubmit="return confirm('Confirmar incineração definitiva?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="lote_id" value="{{ lote.grouper.id }}">
+                    <button class="btn btn-danger btn-sm fw-bold">CONCLUIR INCINERAÇÃO</button>
+                </form>
             </div>
-
-            <table class="table table-hover mb-0">
-                <thead class="table-dark small">
-                    <tr>
-                        <th>Incineração</th>
-                        <th>Processo</th>
-                        <th>Noticiado</th>
-                        <th>BOU</th>
-                        <th>Substância</th>
-                        <th>Peso Final</th>
-                    </tr>
-                </thead>
+            <table class="table table-sm mb-0">
+                <thead><tr class="text-center"><th>BOU</th><th>Ofício</th><th>Substância</th><th>Peso</th></tr></thead>
                 <tbody>
-                    {% for item in v.list %}
-                    <tr class="small">
-                        <td>{{ item.data_conferencia|date:"d/m/Y" }}</td>
-                        <td class="fw-bold">{{ item.processo }}</td>
-                        <td>{{ item.noticiado|upper }}</td>
-                        <td>{{ item.bou }}</td>
+                    {% for item in lote.list %}
+                    <tr class="text-center">
+                        <td class="fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                        <td>{{ item.n_oficio }}</td>
                         <td>{{ item.get_substancia_display }}</td>
-                        <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                        <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% empty %}
-            <p class="text-center py-5">Nenhum item incinerado no histórico.</p>
-        {% endfor %}
-    </div>
-</div>
-    </div>
+    {% empty %}
+        <div class="text-center py-5 text-muted">Nenhum lote pronto para queima.</div>
+    {% endfor %}
 </div>
 
+        <div class="tab-pane fade" id="tab-historico">
+            <div class="card card-shadow p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-archive"></i> Histórico de Incineração</h5>
+                    <a href="{% url 'relatorio_forum' %}" target="_blank" class="btn btn-dark fw-bold shadow-sm"><i class="bi bi-printer"></i> IMPRIMIR TUDO (GERAL)</a>
+                </div>
+                {% regroup incinerados by noticiado.ocorrencia.vara as vara_list %}
+                {% for v in vara_list %}
+                <div class="mb-5 shadow-sm border rounded overflow-hidden">
+                    <div class="p-3 bg-light border-bottom"><span class="fw-bold fs-5 text-primary"><i class="bi bi-bank"></i> {{ v.list.0.noticiado.ocorrencia.get_vara_display|upper }}</span></div>
+                    <table class="table table-hover mb-0">
+                        <tbody>
+                            {% for item in v.list %}
+                            <tr class="small">
+                                <td>{{ item.data_conferencia|date:"d/m/Y" }}</td>
+                                <td class="fw-bold">{{ item.noticiado.ocorrencia.processo }}</td>
+                                <td>{{ item.noticiado.nome|upper }}</td>
+                                <td>{{ item.noticiado.ocorrencia.bou }}</td>
+                                <td>{{ item.get_substancia_display }}</td>
+                                <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div> </div> 
+    
 <script>
-    // Gráfico
-    const ctx = document.getElementById('graficoDrogas').getContext('2d');
-    const labels = JSON.parse(document.getElementById('labels-data').textContent);
-    const valores = JSON.parse(document.getElementById('valores-data').textContent);
-
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: valores,
-                backgroundColor: ['#1a3a2a','#198754','#dc3545','#ffc107','#0d6efd'],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
-            cutout: '70%'
+    // --- MÁSCARA BOU ---
+    const bou = document.getElementById('input_bou');
+    const prefixo = "2026/";
+    bou.addEventListener('input', function() {
+        if (!this.value.startsWith(prefixo)) this.value = prefixo;
+    });
+    bou.addEventListener('keydown', function(e) {
+        if (this.selectionStart <= prefixo.length && (e.key === 'Backspace' || e.key === 'Delete')) {
+            e.preventDefault();
         }
     });
 
-    // Lógica de Unidades
-    document.getElementById('id_substancia').addEventListener('change', function() {
-        const uni = document.getElementById('id_unidade');
-        const lab = document.getElementById('label_peso');
-        if(this.value === 'PE_MACONHA') {
-            uni.value = 'U'; lab.innerText = "Qtd de Pés";
-        } else {
-            uni.value = 'G'; lab.innerText = "Peso Estimado (g)";
+    // --- MÁSCARA PROJUDI ---
+    document.getElementById('input_projudi').addEventListener('input', function(e) {
+        let v = e.target.value.replace(/\D/g, "");
+        if (v.length > 20) v = v.slice(0, 20);
+        v = v.replace(/^(\d{7})(\d)/, "$1-$2").replace(/-(\d{2})(\d)/, "-$1.$2")
+             .replace(/\.(\d{4})(\d)/, ".$1.$2").replace(/\.(\d{1})(\d)/, ".$1.$2")
+             .replace(/\.(\d{2})(\d)/, ".$1.$2");
+        e.target.value = v;
+    });
+
+    // --- DELEGAÇÃO DE EVENTOS (Peso, Maiúsculas e RG) ---
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('mask-peso')) {
+            let v = e.target.value.replace(/\D/g, '');
+            v = (v / 100).toFixed(2).replace('.', ',');
+            e.target.value = v;
+        }
+        if (e.target.classList.contains('uppercase-input')) {
+            e.target.value = e.target.value.toUpperCase();
+        }
+        if (e.target.name === 'rg_policial') {
+            e.target.value = e.target.value.replace(/\D/g, '');
         }
     });
+
+    // --- REGRA PÉ DE MACONHA ---
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('select-substancia')) {
+            const row = e.target.closest('.row');
+            const unidade = row.querySelector('.select-unidade');
+            if (e.target.options[e.target.selectedIndex].text.toUpperCase().includes("PÉ")) {
+                unidade.value = "U";
+            } else {
+                unidade.value = "G";
+            }
+        }
+    });
+
+    // --- FUNÇÃO ADICIONAR NOTICIADO (Corrigida) ---
+    function adicionarNoticiado() {
+        const container = document.getElementById('container-noticiados');
+        const primeiroBloco = container.querySelector('.bloco-noticiado');
+        const novoBloco = primeiroBloco.cloneNode(true);
+
+        // Limpa campos
+        novoBloco.querySelectorAll('input').forEach(i => i.value = '');
+        novoBloco.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+
+        // Adiciona botão de remover
+        const btnRemoverContainer = document.createElement('div');
+        btnRemoverContainer.className = 'text-end mt-2 btn-remover-container';
+        btnRemoverContainer.innerHTML = `
+            <button type="button" class="btn btn-sm btn-danger" style="font-size: 10px; padding: 2px 5px;" 
+                    onclick="this.closest('.bloco-noticiado').remove()">
+                <i class="bi bi-trash"></i> REMOVER ITEM
+            </button>`;
+        novoBloco.appendChild(btnRemoverContainer);
+        
+        container.appendChild(novoBloco);
+    }
+
+    // --- GRÁFICO ---
+    document.addEventListener("DOMContentLoaded", function() {
+        renderizarGrafico();
+    });
+
+    function renderizarGrafico() {
+        const labelsRaw = document.getElementById('labels-data').textContent;
+        const valoresRaw = document.getElementById('valores-data').textContent;
+        
+        if (!labelsRaw || !valoresRaw) return;
+
+        const labels = JSON.parse(labelsRaw.replace(/^"|"$/g, '').replace(/\\"/g, '"'));
+        const valores = JSON.parse(valoresRaw.replace(/^"|"$/g, '').replace(/\\"/g, '"'));
+
+        const canvas = document.getElementById('graficoDrogas');
+        if (!canvas) return;
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: valores,
+                    backgroundColor: ['#1a3a2a', '#198754', '#dc3545', '#ffc107', '#0d6efd'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                cutout: '70%'
+            }
+        });
+    }
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{% if messages %}
+    {% for m in messages %}
+        {% if 'abrir_recibo' in m.tags %}
+            <script>
+                // O conteúdo da mensagem (m.message) é apenas o ID
+                window.open("{% url 'gerar_recibo' m.message %}", '_blank');
+            </script>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
 </body>
 </html>

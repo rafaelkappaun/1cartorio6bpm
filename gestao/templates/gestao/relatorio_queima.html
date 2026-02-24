@@ -45,33 +45,33 @@
     <p class="text-end small">Data do Relatório: {{ data_atual|date:"d/m/Y H:i" }}</p>
 
     <table class="table table-bordered table-sm" style="font-size: 12px;">
-        <thead class="table-dark">
-            <tr>
-                <th>BOU</th>
-                <th>Substância</th>
-                <th>Peso Real</th>
-                <th>Vara Judicial</th>
-                <th>Ofício Autorizador</th>
-                <th>Lote</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in itens %}
-            <tr>
-                <td>{{ item.bou }}</td>
-                <td>{{ item.get_substancia_display|default:item.substancia }}</td>
-                <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
-                <td>{{ item.vara }}</td>
-                <td>{{ item.n_oficio }}</td>
-                <td>{{ item.lote }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center">Nenhum material autorizado para queima no momento.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <thead class="table-dark">
+        <tr>
+            <th>BOU</th>
+            <th>Substância</th>
+            <th>Peso Real</th>
+            <th>Vara Judicial</th>
+            <th>Ofício Autorizador</th>
+            <th>Lote</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in itens %}
+        <tr>
+            <td>{{ item.noticiado.ocorrencia.bou }}</td>
+            <td>{{ item.get_substancia_display|default:item.substancia }}</td>
+            <td>{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+            <td>{{ item.noticiado.ocorrencia.get_vara_display }}</td>
+            <td>{{ item.n_oficio|default:"-" }}</td>
+            <td>{{ item.lote }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">Nenhum material autorizado para queima no momento.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
     <div class="mt-5 pt-5">
         <div class="row text-center">

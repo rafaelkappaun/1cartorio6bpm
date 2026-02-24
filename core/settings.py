@@ -23,9 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-sd1)!tyc=acvggg!y&^5sx)_hz*o^bm5jks35y_z1poih87n=2'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', '1cartorio6bpm.pythonanywhere.com']
 
 
 # Application definition
@@ -120,10 +121,13 @@ LOGIN_REDIRECT_URL = 'painel'
 LOGOUT_REDIRECT_URL = 'login'
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, 'static_files'), 
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-DEBUG = False  # Importante: nunca deixe True na web
-ALLOWED_HOSTS = ['1cartorio6bpm.pythonanywhere.com']
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+  # Importante: nunca deixe True na web
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

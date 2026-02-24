@@ -1,63 +1,48 @@
-{% load static %} 
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Incineração - 6º BPM</title>
+    <title>Inventário Geral - 6º BPM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Estilos para tela */
-        body { background-color: #f8f9fa; font-family: "Times New Roman", Times, serif; }
+        @page { size: A4 landscape; margin: 10mm; }
+        body { background-color: #f8f9fa; font-family: "Times New Roman", serif; }
         
-        .folha-a4 {
-            background: white;
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: 20px auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .folha-a4 { 
+            background: white; 
+            width: 277mm; 
+            min-height: 190mm; 
+            padding: 15mm; 
+            margin: 10px auto; 
+            box-shadow: 0 0 5px rgba(0,0,0,0.1); 
         }
-
-        .cabecalho {
+        
+        .cabecalho { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-bottom: 2px solid #000; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px; 
+        }
+        
+        .brasao { width: 70px; height: auto; margin-right: 20px; }
+        
+        .titulo-relatorio { 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            text-decoration: underline; 
             text-align: center;
-            border-bottom: 2px solid #000;
-            margin-bottom: 25px;
-            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-
-        .brasao { width: 70px; height: auto; margin-bottom: 10px; }
         
-        .titulo-relatorio {
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: 20px 0;
-            text-decoration: underline;
-        }
-
-        table { font-size: 11px !important; }
+        table { font-size: 11px !important; width: 100%; }
+        .table-dark-custom { background-color: #343a40 !important; color: white !important; }
         
-        .assinatura-espaco {
-            margin-top: 60px;
-            text-align: center;
-        }
-
-        /* Configurações de Impressão */
-        @media print {
-            body { background: white !important; margin: 0; padding: 0; }
-            .no-print { display: none !important; }
-            .folha-a4 {
-                width: 100%;
-                margin: 0;
-                box-shadow: none;
-                padding: 10mm;
-            }
-            .table-dark { 
-                background-color: #212529 !important; 
-                color: white !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
+        @media print { 
+            .no-print { display: none !important; } 
+            .folha-a4 { box-shadow: none; margin: 0; width: 100%; } 
         }
     </style>
 </head>
@@ -68,30 +53,18 @@
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="small fw-bold">Vara Judicial</label>
-                 <select name="vara" class="form-select form-select-sm">
-                     <option value="">Todas as Varas</option>
-                     <option value="VARA_01" {% if filtros.vara == "VARA_01" %}selected{% endif %}>1ª Vara Criminal</option>
-                     <option value="VARA_02" {% if filtros.vara == "VARA_02" %}selected{% endif %}>2ª Vara Criminal</option>
-                     <option value="VARA_03" {% if filtros.vara == "VARA_03" %}selected{% endif %}>3ª Vara Criminal</option>
-                 </select>
+                <select name="vara" class="form-select form-select-sm">
+                    <option value="">Todas as Varas</option>
+                    <option value="VARA_01" {% if filtros.vara == "VARA_01" %}selected{% endif %}>1ª Vara Criminal</option>
+                    <option value="VARA_02" {% if filtros.vara == "VARA_02" %}selected{% endif %}>2ª Vara Criminal</option>
+                    <option value="VARA_03" {% if filtros.vara == "VARA_03" %}selected{% endif %}>3ª Vara Criminal</option>
+                </select>
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold">Substância</label>
                 <select name="substancia" class="form-select form-select-sm">
-                    <option value="">Todas as Substâncias</option>
-                    {% for valor, nome in drogas_lista %}
-                        <option value="{{ valor }}" {% if filtros.substancia == valor %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="small fw-bold">Mês Referência</label>
-                <select name="mes" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="1" {% if filtros.mes == "1" %}selected{% endif %}>Janeiro</option>
-                    <option value="2" {% if filtros.mes == "2" %}selected{% endif %}>Fevereiro</option>
-                    <option value="3" {% if filtros.mes == "3" %}selected{% endif %}>Março</option>
-                    <option value="12" {% if filtros.mes == "12" %}selected{% endif %}>Dezembro</option>
+                    <option value="">Todas</option>
+                    {% for valor, nome in drogas_lista %}<option value="{{ valor }}" {% if filtros.substancia == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-4 d-flex gap-2">
@@ -105,83 +78,93 @@
 
 <div class="folha-a4">
     <div class="cabecalho">
-        <img src="{% static 'img/brasao_pmpr.svg' %}" style="height: 80px;" class="me-3">
-        <h6 class="mb-0 fw-bold">ESTADO DO PARANÁ</h6>
-        <h6 class="mb-0">POLÍCIA MILITAR - 5º COMANDO REGIONAL</h6>
-        <h6 class="mb-0">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR</h6>
+        <img src="{% static 'img/brasao_pmpr.svg' %}" alt="Brasão PMPR" class="brasao">
+        <div class="text-center">
+            <h6 class="mb-0 fw-bold">ESTADO DO PARANÁ</h6>
+            <h6 class="mb-0">POLÍCIA MILITAR - 5º COMANDO REGIONAL</h6>
+            <h6 class="mb-0">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR</h6>
+        </div>
     </div>
 
-    <div class="text-center">
-        <h5 class="titulo-relatorio">
-    Relação de Materiais para Incineração<br>
-    <small class="text-muted fs-6" style="text-decoration: none; display: block; margin-top: 5px;">
-        {% if filtros.vara == "VARA_01" %}1ª VARA CRIMINAL
-        {% elif filtros.vara == "VARA_02" %}2ª VARA CRIMINAL
-        {% elif filtros.vara == "VARA_03" %}3ª VARA CRIMINAL
-        {% else %}GERAL UNIDADE{% endif %}
-    </small>
-</h5>
-    </div>
+    <h5 class="titulo-relatorio">Inventário Geral de Materiais Custodiados</h5>
 
-    <p class="text-end mb-4">Cascavel/PR, {{ data_hoje|date:"d" }} de {{ data_hoje|date:"F" }} de {{ data_hoje|date:"Y" }}.</p>
-
-    <table class="table table-bordered table-sm table-striped align-middle">
-        <thead class="table-dark text-center">
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="table-dark-custom text-center">
             <tr>
-                <th width="15%">Lote/Sacola</th>
-                <th width="15%">BOU</th>
-                <th width="25%">Ofício/Vara</th>
-                <th width="20%">Substância</th>
-                <th width="25%">Peso/Qtd Real</th>
+                <th>Status</th>
+                <th>Lote</th>
+                <th>BOU</th>
+                <th>Vara / Ofício</th>
+                <th>Substância</th>
+                <th>Peso/Qtd</th>
             </tr>
         </thead>
         <tbody>
-            {% for item in itens %}
+            {% if pendentes %}
+            <tr class="table-warning"><td colspan="6" class="fw-bold">PENDENTES DE CONFERÊNCIA</td></tr>
+            {% for item in pendentes %}
             <tr>
-                <td class="text-center fw-bold">{{ item.lote }}</td>
-                <td class="text-center">{{ item.bou }}</td>
-                <td>
-                    <div class="fw-bold">{{ item.n_oficio }}</div>
-                    <div class="small text-muted" style="font-size: 0.85em;">{{ item.vara }}</div>
-                </td>
-                <td>{{ item.substancia }}</td>
-                <td class="text-end fw-bold">{{ item.peso_real|floatformat:2 }} g {{ item.get_unidade_display }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="text-center p-4 text-muted">Nenhum registro encontrado para os filtros selecionados.</td>
+                <td class="text-center">PENDENTE</td>
+                <td class="text-center">-</td>
+                <td class="text-center">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td>{{ item.noticiado.ocorrencia.get_vara_display }} / {{ item.n_oficio|default:"-" }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-end fw-bold">{{ item.peso_estimado|floatformat:2 }} {{ item.get_unidade_display }}</td>
             </tr>
             {% endfor %}
+            {% endif %}
+
+            {% if no_cofre %}
+            <tr class="table-info"><td colspan="6" class="fw-bold">NO COFRE</td></tr>
+            {% for item in no_cofre %}
+            <tr>
+                <td class="text-center">NO COFRE</td>
+                <td class="text-center">{{ item.lote.identificador|default:"-" }}</td>
+                <td class="text-center">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td>{{ item.noticiado.ocorrencia.get_vara_display }} / {{ item.n_oficio|default:"-" }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-end fw-bold">{{ item.peso_real|floatformat:2 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+
+            {% if prontos %}
+            <tr class="table-primary"><td colspan="6" class="fw-bold">PRONTOS PARA QUEIMA</td></tr>
+            {% for item in prontos %}
+            <tr>
+                <td class="text-center">PRONTO QUEIMA</td>
+                <td class="text-center">{{ item.lote.identificador|default:"-" }}</td>
+                <td class="text-center">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td>{{ item.noticiado.ocorrencia.get_vara_display }} / {{ item.n_oficio|default:"-" }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-end fw-bold">{{ item.peso_real|floatformat:2 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+
+            {% if incinerados %}
+            <tr class="table-danger"><td colspan="6" class="fw-bold">INCINERADOS</td></tr>
+            {% for item in incinerados %}
+            <tr>
+                <td class="text-center">INCINERADO</td>
+                <td class="text-center">{{ item.lote.identificador|default:"-" }}</td>
+                <td class="text-center">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td>{{ item.noticiado.ocorrencia.get_vara_display }} / {{ item.n_oficio|default:"-" }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-end fw-bold">{{ item.peso_real|floatformat:2 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
         </tbody>
     </table>
 
-    <div class="row mt-4">
-        <div class="col-6">
-            <h6 class="fw-bold border-bottom pb-1">RESUMO DO LOTE:</h6>
-            <table class="table table-sm table-borderless">
-                {% for r in resumo %}
-                <tr>
-                    <td class="py-0">{{ r.substancia }}</td>
-                    <td class="text-end fw-bold py-0">
-                        {{ r.total_massa|floatformat:2 }} 
-                        {% if r.unidade == 'G' %}g{% elif r.unidade == 'U' %}un{% else %}pés{% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
+    <div class="row mt-5 pt-5 text-center">
+        <div class="col-12">
+            <p>_________________________________________________________</p>
+            <p class="fw-bold">NOME DO ENCARREGADO - POSTO/GRAD</p>
+            <p class="small">Encarregado da Custódia de Entorpecentes - 6º BPM</p>
         </div>
-        <div class="col-6 text-end">
-            <p class="small text-muted">Total de registros: {{ itens.count }}</p>
-        </div>
-    </div>
-
-    <div class="assinatura-espaco">
-        <p class="mb-0">_________________________________________________________</p>
-        <p class="mb-0 fw-bold">NOME DO ENCARREGADO - POSTO/GRAD</p>
-        <p class="small">Encarregado da Custódia de Entorpecentes - 6º BPM</p>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
