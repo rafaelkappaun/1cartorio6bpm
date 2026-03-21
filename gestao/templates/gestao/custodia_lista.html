@@ -1,0 +1,174 @@
+{% extends "painel_base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    .card { border-radius: 10px; }
+    .table thead { background-color: #f8f9fa; }
+    body.modal-open { overflow: hidden; padding-right: 0 !important; }
+    .badge-status { font-size: 0.75rem; padding: 0.5em 0.8em; }
+    /* Estilo para o alerta de confirmação de usuário */
+    .user-confirm-box {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+        border-radius: 8px;
+    }
+    /* Estilo para a tabela */
+    .table-hover tbody tr:hover { background-color: #f8fbff; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-safe2 text-success me-2"></i>Itens em Custódia (Cofre)
+            </h3>
+            <p class="text-muted mb-0">Materiais aguardando autorização judicial para incineração.</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" name="busca_bou" class="form-control border-start-0 bg-light" placeholder="Buscar por Nº BOU..." value="{{ request.GET.busca_bou }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100 fw-bold">Pesquisar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Data Entrada</th>
+                            <th>BOU</th>
+                            <th>Material / Noticiado</th>
+                            <th class="text-end">Peso Real</th>
+                            <th class="ps-5">Status / Responsável</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in itens %}
+                        <tr>
+                            <td class="ps-4 text-muted small">{{ item.noticiado.ocorrencia.data_registro|date:"d/m/Y" }}</td>
+                            <td class="fw-bold text-success">{{ item.noticiado.ocorrencia.bou }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border fw-normal">{{ item.get_substancia_display }}</span>
+                                <br><small class="text-muted text-uppercase">{{ item.noticiado.nome|truncatechars:25 }}</small>
+                            </td>
+                            <td class="fw-bold text-end">{{ item.peso_formatado }}</td>
+                            <td class="ps-5">
+                                {% if item.status == 'NO_COFRE' %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle badge-status">
+                                        <i class="bi bi-lock-fill me-1"></i>NO COFRE
+                                    </span>
+                                {% elif item.status == 'AUTORIZADO' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle mb-1 badge-status">
+                                        <i class="bi bi-file-earmark-check me-1"></i>AUTORIZADO
+                                    </span>
+                                    <div style="font-size: 10px; color: #666;">
+                                        Por: {{ item.autorizado_por.last_name|upper }} em {{ item.data_autorizacao|date:"d/m/y" }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group shadow-sm">
+                                    {% if item.status == 'NO_COFRE' %}
+                                        <button class="btn btn-sm btn-primary px-3" data-bs-toggle="modal" data-bs-target="#modalAutorizar{{ item.id }}">
+                                            <i class="bi bi-check-circle me-1"></i> Autorizar
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-success disabled"><i class="bi bi-check2-all"></i> Pronto</button>
+                                    {% endif %}
+                                    
+                                    <a href="{% url 'gerar_recibo' item.noticiado.ocorrencia.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Imprimir Recibo">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="modalAutorizar{{ item.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content shadow-lg border-0">
+                                    <form method="POST" action="{% url 'confirmar_autorizacao' item.id %}" class="form-autorizar">
+                                        {% csrf_token %}
+                                        <div class="modal-header bg-dark text-white">
+                                            <h5 class="modal-title fw-bold small text-uppercase">Autorizar Destruição</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body py-4">
+                                            <div class="bg-light p-3 rounded mb-3 border-start border-4 border-primary">
+                                                <p class="mb-0 small text-muted">Material selecionado:</p>
+                                                <h6 class="fw-bold mb-0 text-dark">{{ item.get_substancia_display }} ({{ item.peso_formatado }})</h6>
+                                                <small class="text-primary fw-bold">BOU: {{ item.noticiado.ocorrencia.bou }}</small>
+                                            </div>
+
+                                            <p class="text-center mb-3">Confirma a existência de autorização judicial para incineração?</p>
+                                            
+                                            <div class="user-confirm-box p-3 text-center shadow-sm">
+                                                <small class="d-block text-uppercase fw-bold opacity-75" style="font-size: 10px;">Confirmando como:</small>
+                                                <div class="d-flex align-items-center justify-content-center mt-1">
+                                                    <i class="bi bi-person-badge-fill fs-4 me-2"></i>
+                                                    <span class="fw-bold fs-5 text-uppercase">
+                                                        {{ request.user.get_full_name|default:request.user.username }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <p class="text-danger small text-center mb-0 mt-3">
+                                                <i class="bi bi-exclamation-triangle me-1"></i> 
+                                                Esta ação será registrada no histórico de auditoria do sistema.
+                                            </p>
+                                        </div>
+                                        <div class="modal-footer border-0 bg-light justify-content-center">
+                                            <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm btn-confirmar">
+                                                <i class="bi bi-check2-circle me-1"></i>CONFIRMAR AGORA
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="bi bi-inbox fs-1 text-muted opacity-25 d-block mb-3"></i>
+                                <span class="text-muted">Nenhum item em custódia no momento.</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Prevenção de múltiplos cliques e feedback de carregamento
+    document.querySelectorAll('.form-autorizar').forEach(form => {
+        form.onsubmit = function() {
+            const btn = this.querySelector('.btn-confirmar');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.replace('btn-success', 'btn-secondary');
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSANDO...';
+            }
+        };
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Certidão de Destruição - 6º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @page { size: landscape; margin: 10mm; }
+        body { font-family: "Times New Roman", Times, serif; background: #fff; color: #000; }
+        .folha-a4 { width: 270mm; margin: auto; padding: 10mm; }
+        .header-doc { border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .vara-header { background-color: #f2f2f2; border-left: 5px solid #1a3a2a; padding: 5px 15px; margin-top: 20px; font-weight: bold; }
+        table { width: 100%; margin-top: 10px; border: 1px solid #000; }
+        th, td { border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center; }
+        .assinatura { border-top: 1px solid #000; width: 80%; margin: 50px auto 5px auto; font-weight: bold; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+<div class="no-print text-center py-3"><button onclick="window.print()" class="btn btn-primary">IMPRIMIR CERTIDÃO</button></div>
+
+<div class="folha-a4">
+    <div class="header-doc d-flex align-items-center">
+        <img src="{% static 'img/brasao_pmpr.svg' %}" style="height: 60px;" class="me-3">
+        <div class="text-center w-100">
+            <h5 class="fw-bold m-0">POLÍCIA MILITAR DO PARANÁ - 6º BPM</h5>
+            <h6 class="m-0">GESTÃO DE CUSTÓDIA DE ENTORPECENTES - CASCAVEL</h6>
+            <h5 class="mt-2 text-decoration-underline">CERTIDÃO DE DESTRUIÇÃO DE MATERIAL</h5>
+        </div>
+    </div>
+
+    <p class="text-justify">Certifico que, em conformidade com as autorizações judiciais, procedeu-se a incineração dos materiais abaixo, sob o <strong>e-Protocolo: {{ itens.0.lote.eprotocolo_geral }}</strong>.</p>
+
+    {% regroup itens by noticiado.ocorrencia.vara as vara_list %}
+    {% for vara in vara_list %}
+        <div class="vara-header">JUÍZO: {{ vara.list.0.noticiado.ocorrencia.get_vara_display|upper }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data Queima</th>
+                    <th>BOU</th>
+                    <th>Processo/Projudi</th>
+                    <th>Noticiado</th>
+                    <th>Substância</th>
+                    <th>Peso Real</th>
+                    <th>Ofício Ref.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in vara.list %}
+                <tr>
+                    <td>{{ item.data_incineracao|date:"d/m/Y" }}</td>
+                    <td class="fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                    <td>{{ item.noticiado.ocorrencia.processo|default:"N/C" }}</td>
+                    <td class="text-start">{{ item.noticiado.nome|upper }}</td>
+                    <td>{{ item.get_substancia_display }}</td>
+                    <td class="fw-bold">{{ item.peso_real }} {{ item.get_unidade_display }}</td>
+                    <td>{{ item.n_oficio|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+
+    <div class="row mt-5 text-center">
+        <div class="col-6"><div class="assinatura"></div>Responsável pela Custódia</div>
+        <div class="col-6"><div class="assinatura"></div>Oficial Supervisor</div>
+    </div>
+</div>
+</body>
+</html>

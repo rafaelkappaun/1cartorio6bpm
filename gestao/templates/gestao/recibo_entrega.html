@@ -3,70 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        @media print { .no-print { display: none; } }
-        body { font-family: Courier, monospace; padding: 20px; line-height: 1.2; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-        .titulo { font-weight: bold; font-size: 18px; margin: 10px 0; }
-        .content { margin-bottom: 30px; }
-        .campo { font-weight: bold; margin-top: 10px; }
-        .assinaturas { margin-top: 80px; display: flex; justify-content: space-around; }
-        .box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; }
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; padding: 20px; }
+        }
+        body { font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.4; }
+        .documento { border: 2px solid #000; padding: 30px; min-height: 900px; position: relative; }
+        .cabecalho { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .brasao { height: 90px; margin-bottom: 10px; }
+        .titulo { font-size: 18px; font-weight: bold; margin: 5px 0; }
+        
+        .info-secao { margin-bottom: 15px; font-size: 14px; }
+        .linha { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .campo-valor { font-weight: bold; text-decoration: underline; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 13px; }
+        th { background-color: #f2f2f2; }
+        
+        .texto-legal { text-align: justify; text-indent: 50px; font-size: 14px; margin: 25px 0; }
+        
+        .assinaturas { margin-top: 60px; }
+        .assinatura-box { text-align: center; width: 45%; display: inline-block; vertical-align: top; }
+        .assinatura-linha { border-top: 1px solid #000; margin: 0 20px 5px 20px; }
+        
+        .footer-data { position: absolute; bottom: 30px; right: 30px; font-style: italic; }
     </style>
 </head>
-<body onload="window.print();">
-    <div class="header">
-        <div>ESTADO DO PARANÁ</div>
-        <div>POLÍCIA MILITAR DO PARANÁ - 6º BPM</div>
-        <div class="titulo">COMPROVANTE DE ENTREGA DE MATERIAL CUSTODIADO</div>
+<body>
+
+<div class="documento">
+    <div class="cabecalho">
+        <img src="/static/img/brasao_pmpr.svg" class="brasao" alt="PMPR">
+        <div class="titulo">ESTADO DO PARANÁ</div>
+        <div class="titulo">POLÍCIA MILITAR DO PARANÁ</div>
+        <div class="titulo">6º BATALHÃO DE POLÍCIA MILITAR</div>
+        <div style="font-size: 14px; font-weight: bold;">Seção de Custódia de Materiais Apreendidos</div>
     </div>
 
-    <div class="content">
-        <p><strong>BOU:</strong> {{ obj.bou }} &nbsp;&nbsp;&nbsp; <strong>PROCESSO:</strong> {{ obj.processo }}</p>
-        <p><strong>VARA:</strong> {{ obj.get_vara_display }}</p>
-        <p><strong>DATA REGISTRO:</strong> {{ obj.data_entrada|date:"d/m/Y H:i" }}</p>
-        <hr>
-        <p class="campo">DADOS DO RESPONSÁVEL PELA ENTREGA:</p>
-        <p>{{ obj.get_policial_graduacao_display }} {{ obj.policial_nome }}</p>
-        
-        <p class="campo">MATERIAIS/VESTÍGIOS:</p>
-        <table width="100%" border="1" cellspacing="0" cellpadding="5">
-            <thead>
+    <div style="text-align: center; text-decoration: underline; font-weight: bold; margin-bottom: 20px;">
+        RECIBO DE DEPÓSITO DE SUBSTÂNCIAS ENTORPECENTES Nº {{ obj.id }}/2026
+    </div>
+
+    <div class="info-secao">
+        <div class="linha">
+            <span>BOU: <span class="campo-valor">{{ obj.bou }}</span></span>
+            <span>PROJUDI: <span class="campo-valor">{{ obj.processo|default:"NÃO INFORMADO" }}</span></span>
+        </div>
+        <div class="linha">
+            <span>VARA: <span class="campo-valor">{{ obj.get_vara_display }}</span></span>
+            
+            <span>UNIDADE: 
+                <span class="campo-valor">
+                {% if obj.unidade_origem == 'OUTRA' %}
+                    {{ obj.unidade_especifica|upper }}
+                {% else %}
+                    {{ obj.get_unidade_origem_display }}
+                {% endif %}
+                </span>
+            </span>
+        </div>
+    </div>
+
+    <div class="texto-legal">
+        Certifico para os devidos fins que, na data de hoje, recebi do(a) 
+        <strong>{{ obj.policial_graduacao }} {{ obj.policial_nome }}</strong>, RG <strong>{{ obj.rg_policial }}</strong>, 
+        pertencente à unidade policial <strong>{% if obj.unidade_origem == 'OUTRA' %}{{ obj.unidade_especifica|upper }}{% else %}{{ obj.get_unidade_origem_display }}{% endif %}</strong>, 
+        a custódia das substâncias entorpecentes listadas abaixo, 
+        apreendidas conforme os autos acima referenciados, para fins de armazenamento e posterior incineração mediante ordem judicial.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Noticiado/Infrator</th>
+                <th>Substância</th>
+                <th>Peso/Qtd (Estimado)</th>
+                <th>Nº Lacre/Vestígio</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for noticiado in obj.noticiados.all %}
+                {% for material in noticiado.materiais.all %}
                 <tr>
-                    <th>NOTICIADO</th>
-                    <th>SUBSTÂNCIA</th>
-                    <th>PESO/QTD</th>
-                    <th>LACRE/VESTÍGIO</th>
+                    <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
+                    <td>{{ noticiado.nome|upper }}</td>
+                    <td>{{ material.get_substancia_display }}</td>
+                    <td>{{ material.peso_estimado }}g</td>
+                    <td>{{ material.numero_lacre|default:"SEM LACRE" }}</td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for noticiado in obj.noticiados.all %}
-                    {% for item in noticiado.materiais.all %}
-                    <tr>
-                        <td>{{ noticiado.nome }}</td>
-                        <td>{{ item.get_substancia_display }}</td>
-                        <td>{{ item.peso_estimado }} {{ item.get_unidade_display }}</td>
-                        <td>{{ item.numero_vestigio }}</td>
-                    </tr>
-                    {% endfor %}
                 {% endfor %}
-            </tbody>
-        </table>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="texto-legal" style="font-size: 12px; margin-top: 10px;">
+        Obs: O peso real será aferido em balança de precisão durante a conferência de entrada no cofre, 
+        podendo haver variações em relação ao peso estimado declarado no momento da entrega.
     </div>
 
     <div class="assinaturas">
-        <div class="box">
-            <small>Responsável pela Entrega</small><br>
-            <strong>{{ obj.policial_nome }}</strong>
+        <div class="assinatura-box">
+            <div class="assinatura-linha"></div>
+            <strong>{{ obj.policial_graduacao }} {{ obj.policial_nome }}</strong><br>
+            RG: {{ obj.rg_policial }}<br>
+            <small>Responsável pela Entrega</small>
         </div>
-        <div class="box">
-            <small>Recebido por (Gestão de Custódia)</small><br>
-            <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+
+        <div style="width: 8%; display: inline-block;"></div>
+
+        <div class="assinatura-box">
+            <div class="assinatura-linha"></div>
+            <strong>{{ obj.cartorario.get_full_name|upper|default:obj.cartorario.username|upper }}</strong><br>
+            6º BPM - Cartório de Custódia<br>
+            <small>Recebedor / Cartorário</small>
         </div>
     </div>
 
-    <div class="no-print" style="margin-top: 50px; text-align: center;">
-        <button onclick="window.print()">Imprimir Novamente</button>
-        <button onclick="window.close()">Fechar Janela</button>
+    <div class="footer-data">
+        Cascavel - PR, {{ data_atual|date:"d/m/Y" }} às {{ data_atual|date:"H:i" }}
     </div>
+</div>
+
+<div class="no-print" style="margin-top: 20px; text-align: center;">
+    <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-weight: bold; background: #198754; color: white; border: none; border-radius: 5px;">
+        IMPRIMIR RECIBO
+    </button>
+</div>
+
+<script>
+    window.onload = function() {
+        setTimeout(function() {
+            window.print();
+        }, 1000);
+    };
+</script>
+
 </body>
 </html>

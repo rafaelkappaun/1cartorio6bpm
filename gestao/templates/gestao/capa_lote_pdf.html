@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Capa de Lote - 6º BPM</title>
+    <style>
+        @media print { .no-print { display: none; } body { margin: 0; padding: 15px; } }
+        body { font-family: 'Courier New', Courier, monospace; color: #000; line-height: 1.2; background: #fff; }
+        .box-lote { border: 4px double #000; padding: 20px; min-height: 92vh; position: relative; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .brasao { height: 80px; margin-bottom: 5px; }
+        
+        .identificador-lote { 
+            font-size: 24px; 
+            font-weight: bold; 
+            text-align: center; 
+            background-color: #000; 
+            color: #fff; 
+            padding: 12px;
+            margin: 15px 0;
+            text-transform: uppercase;
+        }
+
+        .resumo-lote { 
+            display: flex; 
+            justify-content: space-around; 
+            font-size: 18px; 
+            font-weight: bold; 
+            margin-bottom: 20px;
+            border: 1px solid #000;
+            padding: 10px;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 11px; }
+        th { background-color: #eee; text-transform: uppercase; text-align: center; }
+        
+        .footer-assinatura { margin-top: 60px; display: flex; justify-content: space-around; }
+        .assinatura-box { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; }
+        
+        .timestamp { position: absolute; bottom: 10px; right: 20px; font-size: 10px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="box-lote">
+    <div class="header">
+        <img src="{% static 'img/brasao_pmpr.svg' %}" class="brasao" alt="PMPR">
+        <div style="font-size: 16px; font-weight: bold;">POLÍCIA MILITAR DO PARANÁ</div>
+        <div style="font-size: 14px;">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL</div>
+        <div style="font-size: 14px; font-weight: bold;">SEÇÃO DE CUSTÓDIA DE ENTORPECENTES</div>
+    </div>
+
+    <div class="identificador-lote">
+        {{ lote.identificador }} / 
+        {% if lote.data_criacao.month <= 6 %}1º{% else %}2º{% endif %} SEMESTRE / 
+        {{ lote.data_criacao.year }}
+    </div>
+
+    <div class="resumo-lote">
+        <span>PROCESSOS: {{ materiais.count }}</span>
+        <span>PESO TOTAL: {{ peso_total|floatformat:3 }}g</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="5%">SEQ</th>
+                <th width="18%">BOU / ANO</th>
+                <th width="25%">NOTICIADO / ENVOLVIDO</th>
+                <th width="15%">SUBSTÂNCIA</th>
+                <th width="10%">PESO (g)</th>
+                <th width="27%">AUTORIZAÇÃO JUDICIAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in materiais %}
+            <tr>
+                <td style="text-align: center;">{{ forloop.counter }}</td>
+                <td style="font-weight: bold; text-align: center;">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td style="text-transform: uppercase;">{{ item.noticiado.nome|default:"NÃO INFORMADO" }}</td>
+                <td style="text-align: center;">{{ item.get_substancia_display }}</td>
+                <td style="font-weight: bold; text-align: right;">{{ item.peso_real|floatformat:2 }}g</td>
+                <td style="font-size: 9px;">{{ item.n_oficio_autorizacao|default:"CONF. DESPACHO PROJUDI" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center;">Nenhum material vinculado a este lote.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 40px; font-size: 11px; text-align: justify; border: 1px solid #000; padding: 10px; background: #f9f9f9;">
+        <strong>CERTIDÃO DE CONFERÊNCIA:</strong> Certifico que os materiais acima relacionados foram conferidos fisicamente em conformidade com o BOU e as decisões judiciais. 
+        O peso total de <strong>{{ peso_total|floatformat:2 }}g</strong> foi validado para fins de descarte térmico.
+    </div>
+
+    <div class="footer-assinatura">
+        <div class="assinatura-box">
+            <strong>{{ lote.responsavel.get_full_name|upper|default:request.user.get_full_name|upper }}</strong><br>
+            Encarregado da Custódia - 6º BPM
+        </div>
+        <div class="assinatura-box">
+            <strong>OFICIAL DE DIA / TESTEMUNHA</strong><br>
+            Conferência de Cadeia de Custódia
+        </div>
+    </div>
+
+    <div class="timestamp">
+        Relatório gerado em {% now "d/m/Y H:i" %} por {{ request.user.username }} - Sistema de Custódia 6º BPM
+    </div>
+</div>
+
+<div class="no-print" style="text-align: center; margin-top: 20px; padding-bottom: 40px;">
+    <button onclick="window.print()" style="padding: 15px 40px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #1a3a2a; color: #fff; border: none; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        🖨️ IMPRIMIR AGORA
+    </button>
+    <br><br>
+    <a href="{% url 'lotes_incineracao' %}" style="text-decoration: none; color: #666; font-size: 14px;">← Voltar para a Lista de Lotes</a>
+</div>
+
+</body>
+</html>

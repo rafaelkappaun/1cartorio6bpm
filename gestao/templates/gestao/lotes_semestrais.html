@@ -1,0 +1,84 @@
+{% extends "painel_base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold"><i class="bi bi-fire text-danger me-2"></i>Controle de Lotes</h3>
+        
+        <form method="GET" class="d-flex gap-2">
+            <select name="ano" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for a in anos_disponiveis %}
+                    <option value="{{ a }}" {% if filtros.ano == a %}selected{% endif %}>Ano {{ a }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="semestre" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="1" {% if filtros.semestre == 1 %}selected{% endif %}>1º Semestre</option>
+                <option value="2" {% if filtros.semestre == 2 %}selected{% endif %}>2º Semestre</option>
+            </select>
+
+            <select name="vara" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Todas as Varas</option>
+                {% for v in varas_reais %}
+                    <option value="{{ v }}" {% if filtros.vara == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="loteTabs">
+        <li class="nav-item">
+            <button class="nav-link active fw-bold text-dark" id="pendentes-tab" data-bs-toggle="tab" data-bs-target="#pendentes">
+                Aguardando Queima <span class="badge bg-warning text-dark">{{ lotes_pendentes.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link fw-bold text-dark" id="concluidos-tab" data-bs-toggle="tab" data-bs-target="#concluidos">
+                Já Incinerados <span class="badge bg-success">{{ lotes_concluidos.count }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="loteTabsContent">
+        <div class="tab-pane fade show active" id="pendentes" role="tabpanel">
+            <div class="row">
+                {% for lote in lotes_pendentes %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white pt-3">
+                                <h5 class="fw-bold mb-0">Lote #{{ lote.identificador }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">Criado em: {{ lote.data_criacao|date:"d/m/Y" }}</p>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'imprimir_capa_lote' lote.id %}" target="_blank" class="btn btn-outline-primary btn-sm">Relação de Carga</a>
+                                    <button class="btn btn-danger btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalFinalizar{{ lote.id }}">FINALIZAR QUEIMA</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-center py-5 text-muted">Nenhum lote aguardando incineração.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="concluidos" role="tabpanel">
+            <div class="row">
+                {% for lote in lotes_concluidos %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-start border-success border-4 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="fw-bold">Lote #{{ lote.identificador }}</h5>
+                                <p class="small mb-1">Data: {{ lote.data_incineracao|date:"d/m/Y" }}</p>
+                                <a href="{% url 'imprimir_certidao_lote' lote.id %}" target="_blank" class="btn btn-sm btn-dark">Certidão</a>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-center py-5 text-muted">Nenhum registro para este semestre.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
