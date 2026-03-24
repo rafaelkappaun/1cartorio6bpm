@@ -16,7 +16,8 @@ DROGAS_CHOICES = [
 
 UNIDADES_MEDIDA_CHOICES = [
     ('G', 'Gramas (g)'),
-    ('U', 'Unidades (un)'),
+    ('KG', 'Quilos (kg)'),
+    ('UN', 'Unidades (Pés/Comprimidos)'), # Mudamos de 'U' para 'UN' para bater com o HTML
 ]
 
 VARA_CHOICES = [
@@ -125,49 +126,68 @@ class Noticiado(models.Model):
 
 class Material(models.Model):
     id = models.BigAutoField(primary_key=True)
-    noticiado = models.ForeignKey(Noticiado, on_delete=models.CASCADE, related_name='materiais')
+    noticiado = models.ForeignKey('Noticiado', on_delete=models.CASCADE, related_name='materiais')
     substancia = models.CharField(max_length=50, choices=DROGAS_CHOICES)
     outra_substancia = models.CharField(max_length=100, blank=True, null=True)
-    autorizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    data_autorizacao = models.DateTimeField(null=True, blank=True)
-    conferido_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiais_conferidos')
-    data_conferencia_fisica = models.DateTimeField(null=True, blank=True)
     
     # Pesos e Medidas
-    peso_estimado = models.FloatField()
-    peso_real = models.FloatField(blank=True, null=True)
-    unidade = models.CharField(max_length=2, choices=UNIDADES_MEDIDA_CHOICES, default='G')
+    peso_estimado = models.DecimalField(max_digits=12, decimal_places=3, verbose_name="Peso Estimado")
+    peso_real = models.DecimalField(max_digits=12, decimal_places=3, blank=True, null=True, verbose_name="Peso Real")
+    unidade = models.CharField(max_length=3, choices=UNIDADES_MEDIDA_CHOICES, default='G')
     
-    # Cadeia de Custódia
+    # Cadeia de Custódia e Status
     numero_lacre = models.CharField(max_length=50, blank=True, null=True, verbose_name="Nº Lacre/Vestígio")
     status = models.CharField(max_length=30, choices=STATUS_MATERIAL_CHOICES, default='AGUARDANDO_CONFERENCIA')
     
-    # Relacionamentos de Saída
-    lote = models.ForeignKey(LoteIncineracao, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiais')
-    autorizacao_judicial = models.FileField(upload_to='autorizacoes/%Y/', null=True, blank=True)
-    n_oficio = models.CharField(max_length=50, blank=True, null=True, verbose_name="Ref. Decisão/Ofício")
-    eprotocolo_comando = models.CharField(max_length=50, blank=True, null=True)
-    data_incineracao = models.DateTimeField(blank=True, null=True)
+    # Relacionamentos de Saída e Auditoria
+    conferido_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiais_conferidos')
+    data_conferencia_fisica = models.DateTimeField(null=True, blank=True)
+    lote = models.ForeignKey('LoteIncineracao', on_delete=models.SET_NULL, null=True, blank=True, related_name='materiais')
 
-    # --- A FUNÇÃO DEVE FICAR AQUI NO FINAL ---
-    def peso_formatado(self):
-        # Se for unidade (comprimidos), não mostra casas decimais
-        if self.unidade == 'U':
-            valor = self.peso_real if self.peso_real is not None else self.peso_estimado
-            return f"{int(valor)} un"
+    class Meta:
+        verbose_name = "Material"
+        verbose_name_plural = "Materiais"
+
+    def save(self, *args, **kwargs):
+        """
+        REGRA DE OURO: Garante que a unidade faça sentido com a droga.
+        """
+        # Se for Pé de Maconha, SEMPRE será Unidade (UN)
+        if self.substancia == 'PE_MACONHA':
+            self.unidade = 'UN'
         
-        # Lógica para Gramas e Quilos
+        # Se for Ecstasy e o usuário não marcou nada, ou se for Cocaína/Crack, 
+        # a lógica do formulário decidirá, mas aqui garantimos o salvamento.
+        super().save(*args, **kwargs)
+
+    def peso_formatado(self):
+        """
+        Retorna o peso/quantidade formatado com a unidade correta.
+        """
         valor = self.peso_real if self.peso_real is not None else self.peso_estimado
         
+        if not valor:
+            return "0,000"
+
+        # 1. Se a UNIDADE no banco for 'UN' (Unidades)
+        if self.unidade == 'UN':
+            return f"{int(valor)} un"
+        
+        # 2. Se a UNIDADE no banco for 'KG' (Quilos)
+        if self.unidade == 'KG':
+            return f"{valor:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.') + " kg"
+            
+        # 3. Se a UNIDADE for 'G' (Gramas)
+        # Se passar de 1kg, mostramos como kg para facilitar a leitura
         if valor >= 1000:
-            kg = valor / 1000
-            return f"{kg:.3f} kg".replace('.', ',')
-        else:
-            return f"{valor:.3f} g".replace('.', ',')
+            valor_kg = valor / 1000
+            return f"{valor_kg:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.') + " kg"
+        
+        # Padrão: Gramas
+        return f"{valor:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.') + " g"
 
     def __str__(self):
-        return f"{self.get_substancia_display()} | BOU: {self.noticiado.ocorrencia.bou}"
-
+        return f"{self.get_substancia_display()} | {self.peso_formatado()} | BOU: {self.noticiado.ocorrencia.bou}"
 
 class RegistroHistorico(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='historico_set')

@@ -2,10 +2,14 @@
 {% load static %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/imask"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
 
-<div class="container-fluid">
+<div class="container-fluid py-4">
     <form method="POST" action="{% url 'registrar' %}" id="formPrincipal" class="needs-validation" novalidate>
         {% csrf_token %}
         
@@ -15,79 +19,83 @@
                     <h6 class="fw-bold text-primary mb-0">
                         <i class="bi bi-shield-check me-2"></i>1. DADOS DA OCORRÊNCIA E CUSTÓDIA
                     </h6>
-                    <span class="badge bg-dark text-white p-2">OPERADOR: {{ request.user.get_full_name|upper }}</span>
+                    <span class="badge bg-dark text-white p-2">
+                        OPERADOR: {% if user.is_authenticated %}{{ user.get_full_name|upper|default:user.username|upper }}{% else %}SISTEMA{% endif %}
+                    </span>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Data do Fato *</label>
-                        <input type="date" name="data_registro" id="data_registro" class="form-control" required>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i></span>
+                            <input type="text" name="data_registro" id="data_registro" class="form-control" placeholder="00/00/0000" required>
+                        </div>
                     </div>
+                    
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Nº BOU (Ano/Sequência) *</label>
-                        <input type="text" name="bou" id="mask_bou" class="form-control" placeholder="2026/0000000" required>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light fw-bold" id="ano_bou_prefix">0000/</span>
+                            <input type="text" name="bou_sequencia" id="bou_sequencia" class="form-control" 
+                                   placeholder="0000000" maxlength="10" required 
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="hidden" name="bou" id="bou_completo">
+                        </div>
                     </div>
+
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Nº PROJUDI (Processo)</label>
                         <input type="text" name="processo" id="mask_projudi" class="form-control" placeholder="0000000-00.2026.8.16.0021">
                     </div>
+
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Vara Destino *</label>
                         <select name="vara" class="form-select" required>
                             <option value="" selected disabled>Selecione a Vara...</option>
                             <option value="VARA_01">1ª Vara Criminal</option>
                             <option value="VARA_02">2ª Vara Criminal</option>
-                            <option value="VARA_03">3ª Vara Criminal</option>                           
+                            <option value="VARA_03">3ª Vara Criminal</option>                                          
                         </select>
                     </div>
                 </div>
 
                 <div class="row g-3 mt-2">
                     <div class="col-md-2">
-                        <label class="form-label small fw-bold">Unidade/Equipe</label>
-                        <select name="unidade_origem" id="select_unidade" class="form-select" onchange="verificarUnidade(this.value)">
+                        <label class="form-label small fw-bold">Unidade PM *</label>
+                        <select name="unidade_origem" class="form-select" required>
+                            <option value="" selected disabled>Selecione...</option>
                             <option value="RPA">RPA</option>
-                            <option value="RPA">CPU</option>
-                            <option value="DEAEV">DEAEV</option>
+                            <option value="ROTAM">ROTAM</option>
                             <option value="ROCAM">ROCAM</option>
                             <option value="CHOQUE">CHOQUE</option>
-                            <option value="CAVALARIA">CAVALARIA</option>
-                            <option value="P2">ALI / P2</option>
-                            <option value="RPA STO">RPA STO</option>
-                            <option value="RPA LINDOESTE">RPA LINDOESTE</option>
-                            <option value="OUTRA">OUTRA (DIGITAR...)</option>
+                            <option value="P2">P2</option>
+                            <option value="OUTRA">OUTRA</option>
                         </select>
                     </div>
 
-                    <div class="col-md-2" id="div_unidade_extra" style="display: none;">
-                        <label class="form-label small fw-bold text-danger">Qual Unidade? *</label>
-                        <input type="text" name="unidade_especifica" id="input_unidade_especifica" class="form-control border-danger text-uppercase" placeholder="Ex: BPFRON, PF...">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">RG do Policial *</label>
+                        <input type="text" name="rg_policial" class="form-control" placeholder="Apenas números" required
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                     </div>
 
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Graduação</label>
                         <select name="policial_graduacao" class="form-select">
-                            <optgroup label="Praças">
-                                <option value="SD">Soldado</option>
-                                <option value="CB">Cabo</option>
-                                <option value="3SGT">3º Sargento</option>
-                                <option value="2SGT">2º Sargento</option>
-                                <option value="1SGT">1º Sargento</option>
-                                <option value="SUB">Subtenente</option>
-                            </optgroup>
-                            <optgroup label="Oficiais">
-                                <option value="2TEN">2º Tenente</option>
-                                <option value="1TEN">1º Tenente</option>
-                                <option value="CAP">Capitão</option>
-                                <option value="MAJ">Major</option>
-                            </optgroup>
+                            <option value="SD">Soldado</option>
+                            <option value="CB">Cabo</option>
+                            <option value="3SGT">3º Sargento</option>
+                            <option value="2SGT">2º Sargento</option>
+                            <option value="1SGT">1º Sargento</option>
+                            <option value="SUB">Subtenente</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
+
+                    <div class="col-md-6">
                         <label class="form-label small fw-bold">Nome do Policial (Entregador) *</label>
                         <input type="text" name="policial_nome" class="form-control text-uppercase" placeholder="NOME COMPLETO" required>
                     </div>
-                    
                 </div>
             </div>
         </div>
@@ -99,35 +107,46 @@
                     <i class="bi bi-plus-lg me-1"></i> Adicionar Noticiado/Droga
                 </button>
             </div>
+            
             <div class="card-body bg-light" id="container-noticiados">
                 <div class="row g-2 border rounded p-3 mb-3 bg-white item-noticiado shadow-sm">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="small fw-bold text-muted">Nome do Noticiado</label>
-                        <input type="text" name="nome_noticiado[]" class="form-control text-uppercase" placeholder="NOME DO PRESO/INFRATOR" required>
+                        <input type="text" name="nome_noticiado[]" class="form-control text-uppercase" placeholder="NOME DO PRESO" required>
                     </div>
-                    <div class="col-md-2">
-                        <label class="small fw-bold text-muted">Substância</label>
-                        <select name="substancia[]" class="form-select">
-                            <option value="MACONHA">Maconha</option>
-                            <option value="COCAINA">Cocaína</option>
-                            <option value="CRACK">Crack</option>
-                            <option value="SINTETICA">Sintética (Ecstasy/LSD)</option>
-                            <option value="SKUNK">Skunk</option>
-                            <option value="HAXIXE">Haxixe</option>
-                            <option value="OUTROS">Outros</option>
+
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted">Substância *</label>
+                        <select name="substancia[]" class="form-select select-substancia" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for valor, nome in DROGAS_CHOICES %}
+                                <option value="{{ valor }}">{{ nome }}</option>
+                            {% endfor %}
                         </select>
                     </div>
+
                     <div class="col-md-2">
-                        <label class="small fw-bold text-muted">Peso Est. (g)</label>
-                        <input type="text" name="peso_estimado[]" class="form-control mask-peso" placeholder="0,00" required>
+                        <label class="small fw-bold text-muted">Unidade *</label>
+                        <select name="unidade[]" class="form-select select-unidade-medida" required>
+                            <option value="G">Gramas (g)</option>
+                            <option value="KG">Quilos (kg)</option>
+                            <option value="UN">Unidades (Pés/Comp)</option>
+                        </select>
                     </div>
+
                     <div class="col-md-2">
-                        <label class="small fw-bold text-muted">Nº Lacre/Vestígio</label>
-                        <input type="text" name="lacre[]" class="form-control" placeholder="Opcional">
+                        <label class="small fw-bold text-muted">Peso/Qtd Est. *</label>
+                        <input type="text" name="peso_estimado[]" class="form-control mask-peso" placeholder="0,000" required>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+
+                    <div class="col-md-1">
+                        <label class="small fw-bold text-muted">Nº Lacre</label>
+                        <input type="text" name="lacre[]" class="form-control">
+                    </div>
+
+                    <div class="col-md-1 d-flex align-items-end">
                         <button type="button" class="btn btn-outline-danger w-100 btn-remover" style="display:none;">
-                            <i class="bi bi-trash"></i> Excluir
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -141,190 +160,132 @@
 </div>
 
 <script>
-    // 1. CONFIGURAÇÃO DE MÁSCARAS
-    const maskOptions = {
-        bou: { mask: '0000/0000000' },
-        projudi: { mask: '0000000-00.0000.8.16.0000' },
-        rg: { mask: '00.000.000-0' }
-    };
+    // 1. CALENDÁRIO DINÂMICO (Flatpickr) + LÓGICA DO BOU
+    const anoBouLabel = document.getElementById('ano_bou_prefix');
+    const bouSeqInput = document.getElementById('bou_sequencia');
+    const bouHidden = document.getElementById('bou_completo');
 
-    IMask(document.getElementById('mask_bou'), maskOptions.bou);
-    IMask(document.getElementById('mask_projudi'), maskOptions.projudi);
-    IMask(document.getElementById('mask_rg'), maskOptions.rg);
-
-    function aplicarMascaraPeso(el) {
-        IMask(el, {
-            mask: Number,
-            scale: 2,
-            radix: ',',
-            mapToRadix: ['.'],
-            normalizeZeros: true,
-            padFractionalZeros: true
-        });
-    }
-    document.querySelectorAll('.mask-peso').forEach(aplicarMascaraPeso);
-
-    // 2. MOSTRAR/ESCONDER UNIDADE EXTERNA
-    function verificarUnidade(valor) {
-        const divExtra = document.getElementById('div_unidade_extra');
-        const inputExtra = document.getElementById('input_unidade_especifica');
-        
-        if (valor === 'OUTRA') {
-            divExtra.style.display = 'block';
-            inputExtra.setAttribute('required', 'required');
-            inputExtra.focus();
-        } else {
-            divExtra.style.display = 'none';
-            inputExtra.removeAttribute('required');
-            inputExtra.value = '';
+    const fp = flatpickr("#data_registro", {
+        locale: "pt",
+        dateFormat: "Y-m-d", // Formato para o Django
+        altInput: true,      // Exibe formato amigável para o usuário
+        altFormat: "d/m/Y",
+        maxDate: "today",
+        onChange: function(selectedDates, dateStr) {
+            if (dateStr) {
+                const ano = dateStr.split('-')[0];
+                anoBouLabel.innerText = ano + '/';
+                atualizarBou();
+            }
         }
+    });
+
+    function atualizarBou() {
+        bouHidden.value = anoBouLabel.innerText + bouSeqInput.value;
+    }
+    bouSeqInput.addEventListener('input', atualizarBou);
+
+    // 2. MÁSCARAS E REGRAS POR LINHA
+    const mascarasAtivas = new Map();
+
+    function aplicarMascara(input) {
+        const row = input.closest('.item-noticiado');
+        const unidade = row.querySelector('.select-unidade-medida').value;
+        
+        if (mascarasAtivas.has(input)) { mascarasAtivas.get(input).destroy(); }
+
+        let config = (unidade === 'UN') 
+            ? { mask: Number, scale: 0, thousandsSeparator: '' }
+            : { mask: Number, scale: 3, radix: ',', mapToRadix: ['.'], padFractionalZeros: true, thousandsSeparator: '.' };
+        
+        mascarasAtivas.set(input, IMask(input, config));
     }
 
-    // 3. LÓGICA DE ADICIONAR/REMOVER ITENS DINÂMICOS
+    function monitorarLinha(row) {
+        const selectSubstancia = row.querySelector('.select-substancia');
+        const selectUnidade = row.querySelector('.select-unidade-medida');
+        const inputPeso = row.querySelector('.mask-peso');
+
+        selectSubstancia.addEventListener('change', function() {
+            if (this.value === 'PE_MACONHA') {
+                selectUnidade.value = 'UN';
+                selectUnidade.style.backgroundColor = "#e9ecef";
+                selectUnidade.style.pointerEvents = "none";
+            } else {
+                selectUnidade.value = 'G';
+                selectUnidade.style.backgroundColor = "#fff";
+                selectUnidade.style.pointerEvents = "auto";
+            }
+            inputPeso.value = '';
+            aplicarMascara(inputPeso);
+        });
+
+        selectUnidade.addEventListener('change', () => {
+            inputPeso.value = '';
+            aplicarMascara(inputPeso);
+        });
+
+        aplicarMascara(inputPeso);
+    }
+
+    // Inicialização
+    IMask(document.getElementById('mask_projudi'), { mask: '0000000-00.0000.8.16.0000' });
+    document.querySelectorAll('.item-noticiado').forEach(monitorarLinha);
+
+    // 3. ADICIONAR/REMOVER LINHAS
     document.getElementById('btnAdicionar').addEventListener('click', function() {
         const container = document.getElementById('container-noticiados');
-        const itens = container.querySelectorAll('.item-noticiado');
-        const novoItem = itens[0].cloneNode(true);
+        const novaLinha = container.querySelector('.item-noticiado').cloneNode(true);
         
-        novoItem.querySelectorAll('input').forEach(i => i.value = '');
-        const btnRemover = novoItem.querySelector('.btn-remover');
-        btnRemover.style.display = 'block';
+        novaLinha.querySelectorAll('input').forEach(i => i.value = '');
+        novaLinha.querySelector('.btn-remover').style.display = 'block';
         
-        container.appendChild(novoItem);
-        aplicarMascaraPeso(novoItem.querySelector('.mask-peso'));
+        container.appendChild(novaLinha);
+        monitorarLinha(novaLinha);
     });
 
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.btn-remover')) {
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-remover');
+        if (btn) {
             Swal.fire({
-                title: 'Remover item?',
-                text: "Os dados deste noticiado serão apagados.",
+                title: 'Remover Noticiado?',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Sim, remover'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    e.target.closest('.item-noticiado').remove();
-                }
-            });
-        }
-    });
-
-    // 4. VALIDAÇÃO BOOTSTRAP E ALERTA DE SUCESSO/ERRO
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    Swal.fire('Campos Obrigatórios', 'Por favor, preencha todos os campos marcados com *', 'error');
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })();
-
-    // 5. SWEETALERT DE PÓS-CADASTRO (RECIBO)
-    document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sucessoId = urlParams.get('sucesso_id');
-
-        if (sucessoId) {
-            Swal.fire({
-                title: 'Registro Concluído!',
-                text: "O material foi acautelado com sucesso no 6º BPM.",
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: '<i class="bi bi-printer"></i> IMPRIMIR RECIBO',
-                cancelButtonText: 'NOVO CADASTRO',
-                allowOutsideClick: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // URL ajustada para bater com seu urls.py
-                    window.open(`/relatorio/recibo/${sucessoId}/`, '_blank');
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-            });
-        }
-    });
-
-    // ... (mantenha suas máscaras e outras funções)
-
-// 4. VALIDAÇÃO DE DATA E SUBMIT
-(function () {
-    'use strict'
-    var form = document.getElementById('formPrincipal');
-    var inputData = document.getElementById('data_registro');
-
-    // Função para obter data de hoje sem horas (meia-noite) para comparação justa
-    function getHoje() {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        return d;
-    }
-
-    // Monitorar mudança na data para aviso de retroatividade
-    inputData.addEventListener('change', function() {
-        const dataSelecionada = new Date(this.value + 'T00:00:00');
-        const hoje = getHoje();
-
-        if (dataSelecionada < hoje) {
-            Swal.fire({
-                title: 'Data Retroativa',
-                text: 'Atenção: Você selecionou uma data anterior a hoje. Certifique-se de que o BOU corresponde a um registro antigo.',
-                icon: 'info',
-                toast: true,
-                position: 'top-end',
-                timer: 5000,
-                showConfirmButton: false
-            });
-        }
-    });
-
-    form.addEventListener('submit', function (event) {
-        // Captura a data selecionada (ajustando fuso horário)
-        const dataSelecionada = new Date(inputData.value + 'T00:00:00');
-        const hoje = getHoje();
-
-        // Bloqueio de data futura
-        if (dataSelecionada > hoje) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            Swal.fire({
-                title: 'Data Inválida!',
-                text: 'Não é possível realizar registros com data futura.',
-                icon: 'error',
                 confirmButtonColor: '#d33'
-            });
+            }).then((result) => { if (result.isConfirmed) btn.closest('.item-noticiado').remove(); });
+        }
+    });
+
+    // 4. SUBMIT E LIMPEZA DE DADOS
+    document.getElementById('formPrincipal').addEventListener('submit', function(e) {
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            Swal.fire({ title: 'Atenção', text: 'Preencha os campos obrigatórios (*)', icon: 'error' });
             return;
         }
 
-        // Validação padrão do Bootstrap
-        if (!form.checkValidity()) {
-            event.preventDefault();
-            event.stopPropagation();
-            Swal.fire('Campos Obrigatórios', 'Por favor, preencha todos os campos marcados com *', 'error');
-        }
-        
-        form.classList.add('was-validated');
-    }, false);
-})();
+        document.querySelectorAll('.mask-peso').forEach(input => {
+            const mask = mascarasAtivas.get(input);
+            if (mask) {
+                // Converte de "1.234,500" para "1234.500" antes de enviar para o banco
+                const valorLimpo = mask.value.replace(/\./g, '').replace(',', '.');
+                input.value = valorLimpo;
+            }
+        });
+    });
 
-// ... (mantenha o restante do código do recibo)
-
+    // Mensagens Django
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({ title: 'Sucesso!', text: "{{ message }}", icon: 'success' });
+        {% endfor %}
+    {% endif %}
 </script>
 
 <style>
-    .item-noticiado { transition: all 0.2s; border-left: 5px solid #198754 !important; }
-    .item-noticiado:hover { border-left-color: #0d6efd !important; transform: scale(1.005); }
-    .form-control:focus { border-color: #198754; box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); }
+    .item-noticiado { border-left: 5px solid #198754 !important; transition: all 0.2s; }
+    .item-noticiado:hover { border-left-color: #0d6efd !important; }
+    .form-control:focus, .form-select:focus { border-color: #198754; box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); }
+    .flatpickr-input[readonly] { background-color: #fff !important; }
 </style>
 {% endblock %}

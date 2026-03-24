@@ -22,7 +22,7 @@ urlpatterns = [
     path('lotes/montagem/', views.lotes_montagem, name='lotes_montagem'),
     path('lotes/fechar/', views.fechar_lote_manual, name='fechar_lote_manual'),
     path('lotes/lista/', views.lotes_incineracao, name='lotes_incineracao'),
-    path('lotes/finalizar/', views.finalizar_lote_com_eprotocolo, name='finalizar_lote'),
+    path('lotes/finalizar/', views.finalizar_lote_com_eprotocolo, name='finalizar_lote_com_eprotocolo'),
     
     # 4. Relatórios e Impressões Oficiais
     # Centralizado aqui para evitar o erro TemplateDoesNotExist por conflito de rota

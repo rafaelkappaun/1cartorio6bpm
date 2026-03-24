@@ -26,7 +26,7 @@
                             <th>Noticiado</th>
                             <th>Substância</th>
                             <th>Lacre/Vestígio</th>
-                            <th class="text-end pe-4">Peso Est.</th>
+                            <th class="text-end pe-4">Peso/Qtd Est.</th>
                             <th class="text-center">Ação</th>
                         </tr>
                     </thead>
@@ -55,15 +55,14 @@
                                     <i class="bi bi-qr-code me-1"></i>{{ material.numero_lacre|default:"SEM LACRE" }}
                                 </span>
                             </td>
-                            <<td class="fw-bold text-danger text-end pe-4">
-    {# Chama a função peso_formatado que você criou no seu models.py #}
-    {{ material.peso_formatado }}
-</td>
+                            <td class="fw-bold text-danger text-end pe-4">
+                                {{ material.peso_formatado }}
+                            </td>
                             <td class="text-center">
                                 <button class="btn btn-success btn-sm fw-bold px-3 shadow-sm" 
-        onclick="abrirModalConferencia('{{ material.id }}', '{{ material.noticiado.nome|escapejs }}', '{{ material.get_substancia_display|escapejs }}', '{{ material.peso_estimado|stringformat:".3f" }}')">
-    <i class="bi bi-box-seam me-1"></i> CONFERIR
-</button>
+                                        onclick="abrirModalConferencia('{{ material.id }}', '{{ material.noticiado.nome|escapejs }}', '{{ material.get_substancia_display|escapejs }}', '{{ material.peso_estimado|stringformat:".3f" }}', '{{ material.unidade }}')">
+                                    <i class="bi bi-box-seam me-1"></i> CONFERIR
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -103,21 +102,21 @@
                             </div>
                         </div>
                         <div class="mt-2 text-center pt-2 border-top">
-                            <small class="text-muted">Peso Estimado no Balcão: </small>
+                            <small class="text-muted">Estimado no Balcão: </small>
                             <span id="modal_peso_est" class="fw-bold text-danger"></span>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">PESO REAL (BALANÇA DE PRECISÃO) *</label>
+                        <label class="form-label fw-bold text-dark" id="modal_label_input">QUANTIDADE/PESO REAL *</label>
                         <div class="input-group input-group-lg">
                             <input type="text" name="peso_real" id="input_peso_real" 
                                    class="form-control border-success text-center fw-bold" 
                                    placeholder="0,000" required>
-                            <span class="input-group-text bg-success text-white fw-bold">g</span>
+                            <span class="input-group-text bg-success text-white fw-bold" id="modal_unidade_label">g</span>
                         </div>
                         <div class="alert alert-info mt-3 mb-0 py-2 border-0">
-                            <small><i class="bi bi-info-circle me-1"></i> Informe o peso em **gramas**. Use vírgula para decimais.</small>
+                            <small id="modal_ajuda_texto"><i class="bi bi-info-circle me-1"></i> Informe o valor real medido.</small>
                         </div>
                     </div>
                 </div>
@@ -133,51 +132,90 @@
 </div>
 
 <script src="https://unpkg.com/imask"></script>
+<script src="https://unpkg.com/imask"></script>
 <script>
     let maskInstance = null;
 
-    function abrirModalConferencia(id, nome, droga, pesoEst) {
+    function abrirModalConferencia(id, nome, droga, pesoEst, unidade) {
+        // 1. Referências dos elementos
         const form = document.getElementById('formConferir');
+        const labelUnidade = document.getElementById('modal_unidade_label');
+        const ajudaTexto = document.getElementById('modal_ajuda_texto');
+        const inputPeso = document.getElementById('input_peso_real');
+        const pesoEstDisplay = document.getElementById('modal_peso_est');
+        
+        // Limpa valor anterior
+        inputPeso.value = "";
+        if (maskInstance) {
+            maskInstance.destroy();
+            maskInstance = null;
+        }
+
+        // 2. Define a URL do formulário
         form.action = "/conferir/" + id + "/"; 
         
+        // 3. Preenche textos do Noticiado e Droga
         document.getElementById('modal_nome').innerText = nome;
         document.getElementById('modal_droga').innerText = droga;
         
-        // Formata o peso para exibição no Modal com 3 casas e ponto de milhar
-        const valor = parseFloat(pesoEst.replace(',', '.'));
-        let pesoFormatado = "";
-        
-        if (valor >= 1000) {
-            pesoFormatado = (valor / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " kg";
-        } else {
-            pesoFormatado = valor.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " g";
-        }
-        
-        document.getElementById('modal_peso_est').innerText = pesoFormatado;
+        // 4. LÓGICA DE UNIDADE (FORÇADA NO CLIQUE)
+        // Usamos unidade.trim().toUpperCase() para evitar erros de string
+        const uniAjustada = unidade.trim().toUpperCase();
 
+        if (uniAjustada === 'UN') {
+            labelUnidade.innerText = "un";
+            labelUnidade.classList.replace('bg-success', 'bg-primary'); // Muda cor para azul se for unidade
+            ajudaTexto.innerHTML = '<i class="bi bi-info-circle me-1"></i> Informe a <b>quantidade inteira</b> (Pés ou Comprimidos).';
+            inputPeso.placeholder = "0";
+        } else {
+            labelUnidade.innerText = "g";
+            labelUnidade.classList.replace('bg-primary', 'bg-success'); // Volta para verde se for gramas
+            ajudaTexto.innerHTML = '<i class="bi bi-info-circle me-1"></i> Informe o peso em <b>gramas</b>. Use vírgula para decimais.';
+            inputPeso.placeholder = "0,000";
+        }
+
+        // 5. Formata a exibição do peso estimado (Topo do modal)
+        const valorNumerico = parseFloat(pesoEst.replace(',', '.'));
+        if (uniAjustada === 'UN') {
+            pesoEstDisplay.innerText = Math.floor(valorNumerico) + " un";
+        } else {
+            if (valorNumerico >= 1000) {
+                pesoEstDisplay.innerText = (valorNumerico / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + " kg";
+            } else {
+                pesoEstDisplay.innerText = valorNumerico.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + " g";
+            }
+        }
+
+        // 6. Configura a Máscara IMask (Criamos aqui, mas aplicamos no foco)
+        let maskConfig;
+        if (uniAjustada === 'UN') {
+            maskConfig = {
+                mask: Number,
+                scale: 0,
+                signed: false,
+                thousandsSeparator: ''
+            };
+        } else {
+            maskConfig = {
+                mask: Number,
+                scale: 3,
+                radix: ',',
+                mapToRadix: ['.'],
+                padFractionalZeros: true,
+                thousandsSeparator: '.'
+            };
+        }
+
+        // 7. Abre o Modal e foca no input
         const modalElement = document.getElementById('modalConferencia');
         const myModal = new bootstrap.Modal(modalElement);
         myModal.show();
 
+        // Aplicamos a máscara quando o modal terminar de aparecer
         modalElement.addEventListener('shown.bs.modal', function () {
-            const inputPeso = document.getElementById('input_peso_real');
-            inputPeso.value = "";
-            
-            if (maskInstance) maskInstance.destroy();
-
-            maskInstance = IMask(inputPeso, {
-                mask: Number,
-                scale: 3,
-                signed: false,
-                thousandsSeparator: '.',
-                padFractionalZeros: true,
-                normalizeZeros: true,
-                radix: ',',
-                mapToRadix: ['.']
-            });
-            
+            maskInstance = IMask(inputPeso, maskConfig);
             inputPeso.focus();
-        }, { once: true });
+        }, { once: true }); // O 'once: true' mata o evento após disparar, evitando bugs no próximo clique
     }
 </script>
 

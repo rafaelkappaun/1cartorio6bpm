@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Sum, Count, Q, Max
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.core.paginator import Paginator
+from django.db.models import Prefetch
 
 from .models import (
     DROGAS_CHOICES, GRADUACAO_CHOICES, VARA_CHOICES, 
@@ -40,6 +41,7 @@ def registrar(request):
                 messages.error(request, f"O BOU {bou} já está cadastrado!")
                 return redirect('cadastro_entrada')
 
+            # Criação da Ocorrência
             ocorrencia = Ocorrencia.objects.create(
                 bou=bou,
                 data_registro=request.POST.get('data_registro'),
@@ -53,8 +55,10 @@ def registrar(request):
                 cartorario=request.user
             )
 
+            # Captura as listas dos itens dinâmicos
             nomes = request.POST.getlist('nome_noticiado[]')
             substancias = request.POST.getlist('substancia[]')
+            unidades = request.POST.getlist('unidade[]') # <-- CAPTURA UNIDADE (G ou UN)
             pesos = request.POST.getlist('peso_estimado[]')
             lacres = request.POST.getlist('lacre[]')
 
@@ -64,10 +68,13 @@ def registrar(request):
                         ocorrencia=ocorrencia,
                         nome=nomes[i].strip().upper()
                     )
-                    peso_limpo = float(pesos[i].replace(',', '.')) if pesos[i] else 0
+                    
+                    peso_limpo = float(pesos[i].replace(',', '.')) if i < len(pesos) and pesos[i] else 0
+                    
                     Material.objects.create(
                         noticiado=noticiado,
                         substancia=substancias[i],
+                        unidade=unidades[i] if i < len(unidades) else 'G', # <-- SALVA G OU UN
                         peso_estimado=peso_limpo,
                         numero_lacre=lacres[i].strip() if i < len(lacres) else None,
                         status='AGUARDANDO_CONFERENCIA'
@@ -88,15 +95,19 @@ def confirmar_conferencia(request, id):
     if request.method == "POST":
         material = get_object_or_404(Material, id=id)
         peso_txt = request.POST.get('peso_real', '0').replace(',', '.')
+        
         material.peso_real = float(peso_txt)
         material.status = 'NO_COFRE'
         material.conferido_por = request.user
         material.data_conferencia_fisica = timezone.now()
         material.save()
         
+        # Aqui usamos o método que você criou no Model!
         RegistroHistorico.objects.create(
-            material=material, usuario=request.user, status_novo='NO_COFRE',
-            observacao=f"Pesagem Oficial: {material.peso_real}g. Conferido por {request.user.get_full_name()}."
+            material=material, 
+            usuario=request.user, 
+            status_novo='NO_COFRE',
+            observacao=f"Pesagem Oficial: {material.peso_formatado()}. Conferido por {request.user.get_full_name()}."
         )
         messages.success(request, f"BOU {material.noticiado.ocorrencia.bou} conferido.")
     return redirect('conferencia_lista')
@@ -119,108 +130,128 @@ def confirmar_autorizacao(request, id):
 
 # --- 3. DASHBOARD (Onde corrigimos a exibição) ---
 
-@login_required
+
 def painel_principal(request):
     hoje = datetime.now()
+    
+    # 1. CAPTURA DOS FILTROS DA URL
     ano_selecionado = int(request.GET.get('ano', hoje.year))
-    periodo_request = request.GET.get('periodo', 'ano')
-    mes_request = request.GET.get('mes', 'todos')
-    
-    filtros = Q(noticiado__ocorrencia__data_registro__year=ano_selecionado)
+    substancia_filtro = request.GET.get('substancia', 'todas')
+    periodo_selecionado = request.GET.get('periodo', 'ano')
 
-    if mes_request != 'todos' and mes_request.isdigit():
-        filtros &= Q(noticiado__ocorrencia__data_registro__month=int(mes_request))
-        periodo_ativo = mes_request
-    elif periodo_request == 's1':
-        filtros &= Q(noticiado__ocorrencia__data_registro__month__range=(1, 6))
-        periodo_ativo = 's1'
-    elif periodo_request == 's2':
-        filtros &= Q(noticiado__ocorrencia__data_registro__month__range=(7, 12))
-        periodo_ativo = 's2'
+    # 2. DEFINIÇÃO DO INTERVALO DE MESES (Filtro de Semestre)
+    if periodo_selecionado == 's1':
+        mes_inicio, mes_fim = 1, 6
+    elif periodo_selecionado == 's2':
+        mes_inicio, mes_fim = 7, 12
     else:
-        periodo_ativo = 'ano'
+        mes_inicio, mes_fim = 1, 12
 
-    materiais_filtrados = Material.objects.select_related('noticiado__ocorrencia').filter(filtros)
+    # --- SEÇÃO A: ESTOQUE ATUAL (CARDS DE INVENTÁRIO REAL) ---
+    filtros_estoque = Q()
+    if substancia_filtro != 'todas':
+        filtros_estoque &= Q(substancia=substancia_filtro)
     
-    dados_periodo = materiais_filtrados.aggregate(
-        no_cofre=Sum('peso_real', filter=Q(status='NO_COFRE') | Q(status='AUTORIZADO')),
-        incinerado=Sum('peso_real', filter=Q(status='INCINERADO')),
-        pendente=Sum('peso_real', filter=Q(status='AUTORIZADO')),
-        aguardando_conf=Sum('peso_estimado', filter=Q(status='AGUARDANDO_CONFERENCIA')),
-        total_processos=Count('noticiado__ocorrencia', distinct=True)
-    )
+    # Saldo Oficial (Somente o que já foi conferido)
+    saldo_oficial = Material.objects.filter(
+        filtros_estoque, 
+        status='NO_COFRE'
+    ).aggregate(total=Sum('peso_real'))['total'] or 0
 
-    substancias_dict = dict(DROGAS_CHOICES)
+    # Pendente de Conferência (O que entrou mas ainda não foi conferido)
+    saldo_pendente = Material.objects.filter(
+        filtros_estoque, 
+        status='AGUARDANDO_CONFERENCIA'
+    ).aggregate(total=Sum('peso_estimado'))['total'] or 0
+
+
+    # --- SEÇÃO B: PRODUÇÃO DO PERÍODO (GRÁFICOS E CARDS DE FLUXO) ---
+    filtros_periodo = Q(noticiado__ocorrencia__data_registro__year=ano_selecionado)
+    filtros_periodo &= Q(noticiado__ocorrencia__data_registro__month__range=(mes_inicio, mes_fim))
     
-    # Gráficos
-    resumo_drogas = materiais_filtrados.values('substancia').annotate(t=Sum('peso_real')).order_by('-t')
-    labels_drogas = [substancias_dict.get(x['substancia'], x['substancia']) for x in resumo_drogas]
-    pesos_drogas = [float(x['t'] or 0) for x in resumo_drogas]
+    if substancia_filtro != 'todas':
+        filtros_periodo &= Q(substancia=substancia_filtro)
 
-    resumo_unidades = materiais_filtrados.values('noticiado__ocorrencia__unidade_origem').annotate(t=Sum('peso_real')).order_by('-t')
-    labels_unid = [u['noticiado__ocorrencia__unidade_origem'] or "S/ UNIDADE" for u in resumo_unidades]
-    dados_unid = [float(u['t'] or 0) for u in resumo_unidades]
+    materiais_periodo = Material.objects.filter(filtros_periodo)
 
-    # Evolução Mensal
-    tipos_drogas_ano = materiais_filtrados.values_list('substancia', flat=True).distinct()
+    # 1. EVOLUÇÃO MENSAL (GRÁFICO DE LINHA)
     datasets_evolucao = []
-    cores = ['#1a3a2a', '#c5a059', '#2c3e50', '#e74c3c', '#3498db', '#f1c40f', '#8e44ad']
+    drogas_grafico = [substancia_filtro] if substancia_filtro != 'todas' else ['MACONHA', 'COCAINA', 'CRACK']
+    cores = {'MACONHA': '#1a3a2a', 'COCAINA': '#3498db', 'CRACK': '#e74c3c'}
 
-    for i, droga_cod in enumerate(tipos_drogas_ano):
-        valores_mensais = []
-        for mes_idx in range(1, 13):
-            v = Material.objects.filter(
-                noticiado__ocorrencia__data_registro__year=ano_selecionado,
-                noticiado__ocorrencia__data_registro__month=mes_idx,
-                substancia=droga_cod
-            ).aggregate(s=Sum('peso_real'))['s'] or 0
-            valores_mensais.append(float(v))
+    for droga in drogas_grafico:
+        dados_meses = []
+        for mes in range(1, 13):
+            if mes < mes_inicio or mes > mes_fim:
+                dados_meses.append(0)
+            else:
+                soma = materiais_periodo.filter(
+                    substancia=droga, 
+                    noticiado__ocorrencia__data_registro__month=mes
+                ).aggregate(total=Sum('peso_real'))['total'] or 0
+                dados_meses.append(float(soma))
         
         datasets_evolucao.append({
-            'label': substancias_dict.get(droga_cod, droga_cod),
-            'data': valores_mensais,
-            'borderColor': cores[i % len(cores)],
-            'backgroundColor': 'transparent', 'tension': 0.3, 'pointRadius': 4
+            'label': dict(DROGAS_CHOICES).get(droga, droga),
+            'data': dados_meses,
+            'borderColor': cores.get(droga, '#333'),
+            'backgroundColor': cores.get(droga, '#333'),
+            'tension': 0.3,
+            'fill': False
         })
 
-    # Ranking (Tabela) formatado
-    ranking_qs = materiais_filtrados.values(
-        'noticiado__ocorrencia__policial_nome', 'substancia'
-    ).annotate(qtd=Count('id'), peso=Sum('peso_real')).order_by('-peso')
+    # 2. SEPARAÇÃO PARA OS GRÁFICOS DE PIZZA (PESO vs UNIDADE)
+    # Materiais por PESO (Grama/Quilo)
+    resumo_peso = materiais_periodo.filter(unidade='G').values('substancia').annotate(
+        total=Sum('peso_real')
+    ).order_by('-total')
+    
+    labels_peso = [dict(DROGAS_CHOICES).get(x['substancia'], x['substancia']) for x in resumo_peso]
+    valores_peso = [float(x['total'] or 0) for x in resumo_peso]
 
-    ranking_list = []
-    for p in ranking_qs:
-        ranking_list.append({
-            'nome_policial': p['noticiado__ocorrencia__policial_nome'] or "NÃO INFORMADO",
-            'nome_droga': substancias_dict.get(p['substancia'], p['substancia']),
-            'qtd': p['qtd'],
-            'peso_formatado': formatar_peso_br(p['peso']) # Formata aqui para o HTML
-        })
+    # Materiais por UNIDADE (Pé de maconha, comprimidos, etc)
+    # CORREÇÃO AQUI: Usei 'resumo_unidade' consistentemente agora
+    resumo_unidade = materiais_periodo.filter(unidade='UN').values('substancia').annotate(
+        total=Sum('peso_real')
+    ).order_by('-total')
+    
+    labels_unid_pizza = [dict(DROGAS_CHOICES).get(x['substancia'], x['substancia']) for x in resumo_unidade]
+    valores_unid_pizza = [float(x['total'] or 0) for x in resumo_unidade]
 
-    paginator = Paginator(ranking_list, 10)
-    page_obj = paginator.get_page(request.GET.get('page'))
+    # 3. PRODUTIVIDADE UNIDADE PM (BARRAS)
+    resumo_pm = materiais_periodo.values('noticiado__ocorrencia__unidade_origem').annotate(
+        total=Sum('peso_real')
+    ).order_by('-total')
+    
+    labels_pm = [x['noticiado__ocorrencia__unidade_origem'] or "OUTROS" for x in resumo_pm]
+    valores_pm = [float(x['total'] or 0) for x in resumo_pm]
 
+    # 4. CARDS DE RESULTADO DO PERÍODO
+    incinerado_periodo = materiais_periodo.filter(status='INCINERADO').aggregate(total=Sum('peso_real'))['total'] or 0
+    total_bous = materiais_periodo.aggregate(total=Count('noticiado__ocorrencia', distinct=True))['total'] or 0
+
+    # 5. MONTAGEM DO CONTEXTO
     context = {
         'ano_atual': ano_selecionado,
-        'periodo_atual': periodo_ativo,
-        'mes_selecionado': mes_request,
+        'substancia_selecionada': substancia_filtro,
+        'periodo_selecionado': periodo_selecionado,
+        'DROGAS_CHOICES': DROGAS_CHOICES,
         'anos_disponiveis': range(2023, hoje.year + 1),
-        'meses_lista': [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')],
         
-        # Labels já formatadas para os CARDS
-        'no_cofre_label': formatar_peso_br(dados_periodo['no_cofre']),
-        'incinerado_label': formatar_peso_br(dados_periodo['incinerado']),
-        'pendente_label': formatar_peso_br(dados_periodo['pendente']),
-        'aguardando_conf_label': formatar_peso_br(dados_periodo['aguardando_conf']),
-        'total_processos': dados_periodo['total_processos'] or 0,
+        'no_cofre_label': formatar_peso_br(saldo_oficial),
+        'pendente_conferencia_label': formatar_peso_br(saldo_pendente),
+        'incinerado_label': formatar_peso_br(incinerado_periodo),
+        'total_processos': total_bous,
         
-        'labels_json': json.dumps(labels_drogas),
-        'pesos_json': json.dumps(pesos_drogas),
-        'unidades_labels_json': json.dumps(labels_unid),
-        'unidades_dados_json': json.dumps(dados_unid),
         'datasets_evolucao_json': json.dumps(datasets_evolucao),
-        'page_obj': page_obj,
+        'labels_peso_json': json.dumps(labels_peso),
+        'valores_peso_json': json.dumps(valores_peso),
+        'labels_unid_pizza_json': json.dumps(labels_unid_pizza),
+        'valores_unid_pizza_json': json.dumps(valores_unid_pizza),
+        'unidades_labels_json': json.dumps(labels_pm),
+        'unidades_dados_json': json.dumps(valores_pm),
     }
+    
     return render(request, 'gestao/painel.html', context)
 
 # --- 4. GESTÃO DE LOTES ---
@@ -262,24 +293,27 @@ def finalizar_lote_com_eprotocolo(request):
 
 @login_required
 def imprimir_certidao_lote(request, id):
-    # 1. Busca o lote específico
     lote = get_object_or_404(LoteIncineracao, id=id)
-    
-    # 2. Busca os materiais vinculados ao lote
-    # O .order_by('noticiado__ocorrencia__vara') é OBRIGATÓRIO para o {% regroup %} funcionar
-    # O .select_related evita que o banco seja consultado várias vezes dentro do loop
-    materiais = Material.objects.filter(lote=lote).select_related(
-        'noticiado__ocorrencia', 
-        'lote'
-    ).order_by('noticiado__ocorrencia__vara', 'noticiado__nome')
+    vara_filtrada = request.GET.get('vara')
+
+    # Buscamos os materiais
+    materiais_qs = Material.objects.filter(lote=lote).select_related(
+        'noticiado__ocorrencia', 'lote'
+    )
+
+    # Se filtrou por vara, aplicamos o filtro ANTES de qualquer outra coisa
+    if vara_filtrada and vara_filtrada != "":
+        materiais_qs = materiais_qs.filter(noticiado__ocorrencia__vara__iexact=vara_filtrada)
+
+    # ORDENAÇÃO É CRUCIAL: Primeiro por vara, depois por nome
+    materiais = materiais_qs.order_by('noticiado__ocorrencia__vara', 'noticiado__nome')
 
     context = {
         'itens': materiais,
         'lote': lote,
+        'vara_selecionada': vara_filtrada,
     }
-    
     return render(request, 'relatorios/certidao_destruicao.html', context)
-
 # --- 5. LISTAGENS ---
 
 @login_required
@@ -318,26 +352,26 @@ def lotes_montagem(request):
     }
     return render(request, 'gestao/lotes_montagem.html', context)
 
+
+ # Importação importante!
+
 @login_required
 def lotes_incineracao(request):
-    # 1. Configuração de Datas (Padrão para o Histórico)
     hoje = date.today()
     ano_atual = hoje.year
     semestre_atual = 1 if hoje.month <= 6 else 2
 
-    # Captura dos filtros da URL
-    ano_sel = request.GET.get('ano', str(ano_atual))
-    semestre_sel = request.GET.get('semestre', str(semestre_atual))
+    ano_sel = request.GET.get('ano')
+    semestre_sel = request.GET.get('semestre')
     vara_sel = request.GET.get('vara')
 
-    # Conversão para inteiros
-    ano_sel_int = int(ano_sel) if ano_sel.isdigit() else ano_atual
-    sem_sel_int = int(semestre_sel) if semestre_sel.isdigit() else semestre_atual
+    ano_sel_int = int(ano_sel) if (ano_sel and ano_sel.isdigit()) else ano_atual
+    sem_sel_int = int(semestre_sel) if (semestre_sel and semestre_sel.isdigit()) else semestre_atual
 
-    # --- ABA 1: AGUARDANDO QUEIMA (Sempre todos, sem filtro de data) ---
-    lotes_pendentes = LoteIncineracao.objects.exclude(status='INCINERADO').prefetch_related('materiais')
+    # --- ABA 1: PENDENTES ---
+    lotes_pendentes = LoteIncineracao.objects.exclude(status='INCINERADO')
 
-    # --- ABA 2: JÁ INCINERADOS (Filtrados por Ano e Semestre) ---
+    # --- ABA 2: CONCLUÍDOS ---
     mes_inicio = 1 if sem_sel_int == 1 else 7
     mes_fim = 6 if sem_sel_int == 1 else 12
 
@@ -346,37 +380,61 @@ def lotes_incineracao(request):
         data_incineracao__year=ano_sel_int,
         data_incineracao__month__gte=mes_inicio,
         data_incineracao__month__lte=mes_fim
-    ).prefetch_related('materiais')
+    )
 
-    # --- FILTRO DE VARA (Aplica-se apenas aos incinerados, ou ambos se desejar) ---
-    if vara_sel:
-        # Se quiser filtrar a vara também nos pendentes, descomente a linha abaixo:
-        # lotes_pendentes = lotes_pendentes.filter(materiais__noticiado__ocorrencia__vara__iexact=vara_sel).distinct()
-        
+    # --- A MÁGICA DO FILTRO ESPECÍFICO ---
+    if vara_sel and vara_sel != "":
+        # 1. Filtramos os lotes que possuem PELO MENOS UM material daquela vara
         lotes_concluidos = lotes_concluidos.filter(
             materiais__noticiado__ocorrencia__vara__iexact=vara_sel
         ).distinct()
 
-    # --- ORGANIZAÇÃO PARA O TEMPLATE ---
+        # 2. Aqui está o segredo: Dizemos ao Django para carregar APENAS os materiais 
+        # daquela vara específica quando ele for desenhar o lote no HTML
+        materiais_filtrados = Material.objects.filter(noticiado__ocorrencia__vara__iexact=vara_sel)
+        lotes_concluidos = lotes_concluidos.prefetch_related(
+            Prefetch('materiais', queryset=materiais_filtrados)
+        )
+        
+        # Fazemos o mesmo para os pendentes se você quiser filtrar a vara lá também
+        lotes_pendentes = lotes_pendentes.filter(
+            materiais__noticiado__ocorrencia__vara__iexact=vara_sel
+        ).distinct().prefetch_related(
+            Prefetch('materiais', queryset=materiais_filtrados)
+        )
+    else:
+        # Se não houver vara selecionada, trazemos tudo normalmente
+        lotes_concluidos = lotes_concluidos.prefetch_related('materiais')
+        lotes_pendentes = lotes_pendentes.prefetch_related('materiais')
+
+    # Lista de varas para o select
     varas_raw = Material.objects.values_list('noticiado__ocorrencia__vara', flat=True).distinct()
     varas_limpas = sorted(list(set([v.upper() for v in varas_raw if v])))
+
+    # Anos Infinitos
+    primeiro_lote = LoteIncineracao.objects.order_by('data_criacao').first()
+    ano_inicio = primeiro_lote.data_criacao.year if primeiro_lote else 2024
+    anos_disponiveis = sorted(list(range(ano_inicio, ano_atual + 1)), reverse=True)
 
     context = {
         'lotes_pendentes': lotes_pendentes.order_by('-data_criacao'),
         'lotes_concluidos': lotes_concluidos.order_by('-data_incineracao'),
         'varas_reais': varas_limpas,
-        'anos_disponiveis': range(2024, ano_atual + 1),
-        'filtros': {
-            'ano': ano_sel_int,
-            'semestre': sem_sel_int,
-            'vara': vara_sel
-        }
+        'anos_disponiveis': anos_disponiveis,
+        'filtros': {'ano': ano_sel_int, 'semestre': sem_sel_int, 'vara': vara_sel}
     }
     return render(request, 'gestao/lotes_semestrais.html', context)
+
+
 @login_required
 def cadastro_entrada(request):
-    return render(request, 'gestao/cadastro_entrada.html', {'drogas_lista': DROGAS_CHOICES, 'varas_lista': VARA_CHOICES, 'graduacoes': GRADUACAO_CHOICES})
-
+    # Passamos as listas para o template carregar os selects
+    context = {
+        'DROGAS_CHOICES': DROGAS_CHOICES, 
+        'VARA_CHOICES': VARA_CHOICES, 
+        'GRADUACAO_CHOICES': GRADUACAO_CHOICES
+    }
+    return render(request, 'gestao/cadastro_entrada.html', context)
 # --- 6. IMPRESSÃO ---
 
 @login_required
