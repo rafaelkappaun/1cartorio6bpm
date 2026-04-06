@@ -4,11 +4,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from django.views.generic import RedirectView
+from django.http import JsonResponse
+
+def home(request):
+    return JsonResponse({
+        'message': 'API do Cartório 6º BPM',
+        'version': '1.0.0',
+        'docs': '/api/schema/swagger-ui/'
+    })
 
 urlpatterns = [
-    # Redireciona a raiz para o frontend
-    path('', RedirectView.as_view(url='http://localhost:5173/', permanent=False)),
+    # Raiz da API
+    path('', home),
 
     # Admin Django
     path('admin/', admin.site.urls),
