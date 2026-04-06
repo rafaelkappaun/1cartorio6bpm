@@ -454,6 +454,48 @@ class MaterialViewSet(viewsets.ModelViewSet):
         file_url = request.build_absolute_uri(settings.MEDIA_URL + f"oficios/{pdf_path.split('/')[-1]}")
         return Response({"message": "Ofício gerado", "file_url": file_url})
 
+    @action(detail=False, methods=['post'])
+    def gerar_relatorio(self, request):
+        """
+        Gera relatório PDF filtrado por tipo (inventario, incineracao, custodia, remessa).
+        Body: { tipo: 'inventario'|'incineracao'|'custodia'|'remessa', filtros: {...} }
+        """
+        tipo = request.data.get('tipo', 'inventario')
+        filtros = request.data.get('filtros', {})
+        
+        # Aplica filtros
+        qs = Material.objects.all()
+        
+        if filtros.get('ano'):
+            qs = qs.filter(data_criacao__year=filtros['ano'])
+        if filtros.get('categoria'):
+            qs = qs.filter(categoria=filtros['categoria'])
+        if filtros.get('status'):
+            qs = qs.filter(status=filtros['status'])
+            
+        # Mapeia tipo para categoria/status de filtro
+        if tipo == 'incineracao':
+            qs = qs.filter(status__in=['AUTORIZADO', 'AGUARDANDO_INCINERACAO'])
+        elif tipo == 'custodia':
+            qs = qs.filter(status__in=['ARMAZENADO', 'AUTORIZADO'])
+        elif tipo == 'remessa':
+            qs = qs.filter(categoria__in=['SOM', 'FACA', 'SIMULACRO', 'OUTROS'])
+            
+        if not qs.exists():
+            return Response({"error": "Nenhum material encontrado com os filtros selecionados."}, status=400)
+            
+        # Gera o PDF
+        filtros_labels = {
+            'tipo': tipo,
+            'ano': filtros.get('ano', ''),
+            'categoria': filtros.get('categoria', ''),
+            'status': filtros.get('status', ''),
+        }
+        pdf_path = gerar_relatorio_filtrado_pdf(qs, filtros_labels, tipo)
+        
+        file_url = request.build_absolute_uri(settings.MEDIA_URL + pdf_path)
+        return Response({"message": "Relatório gerado", "file_url": file_url})
+
     @action(detail=True, methods=['post'])
     def conferir_fisicamente(self, request, pk=None):
         material = self.get_object()

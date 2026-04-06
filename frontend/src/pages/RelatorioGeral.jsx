@@ -39,22 +39,9 @@ export default function RelatorioGeral() {
     setLoading(tipo);
     setMessage(null);
     try {
-      const params = { ...filtros };
-      const response = await api.get(`/materiais/?format=json`, { params });
-      const materiais = response.data.results || response.data;
-
-      if (materiais.length === 0) {
-        setMessage({ type: 'warning', text: 'Nenhum material encontrado com os filtros selecionados.' });
-        setLoading(null);
-        return;
-      }
-
-      const ids = materiais.map(m => m.id);
-      const formData = new FormData();
-      ids.forEach(id => formData.append('materiais_ids', id));
-
-      const resPdf = await api.post('/materiais/gerar_oficio/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const resPdf = await api.post('/materiais/gerar_relatorio/', {
+        tipo: tipo === 'inventario' ? 'inventario' : tipo,
+        filtros: filtros,
       });
 
       if (resPdf.data.file_url) {
@@ -63,7 +50,7 @@ export default function RelatorioGeral() {
       }
     } catch (e) {
       console.error('Erro ao gerar relatório:', e);
-      setMessage({ type: 'error', text: 'Erro ao gerar relatório. Verifique os filtros.' });
+      setMessage({ type: 'error', text: e.response?.data?.error || 'Erro ao gerar relatório. Verifique os filtros.' });
     } finally {
       setLoading(null);
     }
