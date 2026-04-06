@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { History, Search, RefreshCw, ChevronRight, User, Calendar, Shield, MapPin, Hash } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const API = 'http://127.0.0.1:8000/api';
+import api from '../services/api';
 
 const STATUS_COLORS = {
   'RECEBIDO': 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -23,7 +21,7 @@ export default function Auditoria() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/materiais/`);
+      const res = await api.get(`/materiais/`);
       setMateriais(res.data.results || res.data);
     } catch (e) {
       console.error('Erro ao carregar auditoria:', e);

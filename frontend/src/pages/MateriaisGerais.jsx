@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { FileText, Truck, CheckCircle, Upload, Search, Package, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const BASE_URL = 'http://127.0.0.1:8000';
+import api from '../services/api';
 
 export default function MateriaisGerais() {
   const [materiais, setMateriais] = useState([]);
@@ -16,7 +14,7 @@ export default function MateriaisGerais() {
   const loadMateriais = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/api/materiais/`);
+      const res = await api.get('/materiais/');
       const data = res.data.results || res.data;
       // Filtrar apenas materiais gerais (não entorpecentes e não dinheiro)
       const gerais = data.filter(m => m.categoria !== 'ENTORPECENTE' && m.categoria !== 'DINHEIRO');
@@ -41,7 +39,7 @@ export default function MateriaisGerais() {
   const gerarOficio = async () => {
     if (selected.length === 0) return alert("Selecione ao menos um item.");
     try {
-      const res = await axios.post(`${BASE_URL}/api/materiais/gerar_oficio/`, { materiais_ids: selected });
+      const res = await api.post('/materiais/gerar_oficio/', { materiais_ids: selected });
       window.open(res.data.file_url, '_blank');
       alert("Ofício gerado com sucesso! O status dos itens foi atualizado.");
       setSelected([]);
@@ -56,7 +54,7 @@ export default function MateriaisGerais() {
     formData.append('recibo', file);
     setUploading(id);
     try {
-      await axios.post(`${BASE_URL}/api/materiais/${id}/confirmar_entrega_forum/`, formData, {
+      await api.post(`/materiais/${id}/confirmar_entrega_forum/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       alert("Comprovante enviado e entrega confirmada!");

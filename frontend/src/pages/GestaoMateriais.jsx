@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Filter, Search, Printer, CheckSquare, Square, FileText, CheckCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function GestaoMateriais() {
   const [materiais, setMateriais] = useState([]);
@@ -16,7 +16,7 @@ export default function GestaoMateriais() {
       const params = new URLSearchParams();
       if (filtroCategoria) params.append('categoria', filtroCategoria);
       
-      const res = await axios.get(`http://127.0.0.1:8000/api/materiais/?${params.toString()}`);
+      const res = await api.get(`/materiais/?${params.toString()}`);
       let data = res.data.results || res.data;
       
       const forumMateriais = data.filter(m => 
@@ -58,12 +58,12 @@ export default function GestaoMateriais() {
     }
     
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/materiais/gerar_oficio/', {
+      const res = await api.post('/materiais/gerar_oficio/', {
         materiais_ids: selecionados
       });
       
       if (res.data.file_url) {
-        window.open(`http://127.0.0.1:8000${res.data.file_url}`, '_blank');
+        window.open(res.data.file_url, '_blank');
       }
       
       alert(`Ofício gerado com sucesso! ${selecionados.length} itens serão remetidos.`);

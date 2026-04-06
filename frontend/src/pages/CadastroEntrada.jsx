@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, FileText, UserPlus, Package, Search, Calendar, AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 const DROGAS_LISTA = [
   { value: 'MACONHA', label: 'Maconha (Flor/Cume)' },
@@ -65,7 +65,7 @@ export default function CadastroEntrada() {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/ocorrencias/${id}/`);
+      const res = await api.get(`/api/ocorrencias/${id}/`);
       const data = res.data;
       const [ano, numero] = data.bou.split('/');
       
@@ -89,7 +89,7 @@ export default function CadastroEntrada() {
   const loadNaturezas = async () => {
     setLoadingNaturezas(true);
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/naturezas-penais/');
+      const res = await api.get('/api/naturezas-penais/');
       const data = res.data.results || res.data;
       setNaturezasList(data);
       setNaturezasSuggestions(data.slice(0, 15));
@@ -135,7 +135,7 @@ export default function CadastroEntrada() {
 
   const createNatureza = async (nome) => {
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/naturezas-penais/', {
+      const res = await api.post('/api/naturezas-penais/', {
         nome: nome.toUpperCase(),
         tipo: 'TC'
       });
@@ -288,12 +288,12 @@ export default function CadastroEntrada() {
         noticiados: noticiadosPayload
       };
 
-      const url = id ? `http://127.0.0.1:8000/api/ocorrencias/${id}/` : 'http://127.0.0.1:8000/api/ocorrencias/';
+      const url = id ? `/api/ocorrencias/${id}/` : '/api/ocorrencias/';
       const method = id ? 'put' : 'post';
       
       const res = await axios[method](url, payload);
       
-      const pdfRes = await axios.get(`http://127.0.0.1:8000/api/ocorrencias/${res.data.id}/imprimir_recibo/`);
+      const pdfRes = await api.get(`/api/ocorrencias/${res.data.id}/imprimir_recibo/`);
       window.open(pdfRes.data.url, '_blank');
       
       alert(id ? 'Alterações salvas com sucesso!' : 'Cadastro Finalizado. O Recibo foi aberto em nova aba!');
@@ -305,7 +305,7 @@ export default function CadastroEntrada() {
       if (errorData?.bou && errorData.bou.some(m => m.includes("já existe"))) {
         try {
           const bouStr = `${formData.bou_ano}/${formData.bou_numero}`;
-          const findRes = await axios.get(`http://127.0.0.1:8000/api/ocorrencias/buscar_por_bou/?bou=${bouStr}`);
+          const findRes = await api.get(`/api/ocorrencias/buscar_por_bou/?bou=${bouStr}`);
           setDuplicateOcorrencia(findRes.data);
         } catch (findErr) {
           alert('Este BOU já está cadastrado, mas não foi possível localizar os detalhes.');

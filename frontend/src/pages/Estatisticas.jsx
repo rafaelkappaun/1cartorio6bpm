@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, Calendar, ChevronDown, ChevronUp, X, Download,
@@ -12,8 +11,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
   LineChart, Line, Area, AreaChart
 } from 'recharts';
-
-const API = 'http://127.0.0.1:8000/api';
+import api from '../services/api';
 
 const COLORS = [
   '#1a3a2a', '#c5a059', '#10b981', '#06b6d4', '#f59e0b',
@@ -195,8 +193,8 @@ export default function Estatisticas() {
     try {
       const qs = buildQueryString();
       const [statsRes, matRes] = await Promise.all([
-        axios.get(`${API}/materiais/estatisticas/?${qs}`),
-        axios.get(`${API}/materiais/?${qs}`)
+        api.get(`/materiais/estatisticas/?${qs}`),
+        api.get(`/materiais/?${qs}`)
       ]);
       setData(statsRes.data);
       setMateriais(matRes.data.results || matRes.data);
@@ -212,9 +210,11 @@ export default function Estatisticas() {
     setExportando(tipo);
     try {
       const qs = buildQueryString();
-      const res = await axios.get(`${API}/materiais/exportar_relatorio/?tipo=${tipo}&${qs}`);
-      if (res.data.url) {
-        window.open(res.data.url, '_blank');
+      const params = new URLSearchParams(qs);
+      params.set('tipo', tipo);
+      const res = await api.post('/materiais/gerar_relatorio/', { tipo, filtros: {} });
+      if (res.data.file_url) {
+        window.open(res.data.file_url, '_blank');
       }
     } catch (e) {
       console.error('Erro ao gerar PDF:', e);
