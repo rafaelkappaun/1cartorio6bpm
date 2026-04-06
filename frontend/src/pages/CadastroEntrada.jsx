@@ -65,7 +65,7 @@ export default function CadastroEntrada() {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await api.get(`/api/ocorrencias/${id}/`);
+      const res = await api.get(`/ocorrencias/${id}/`);
       const data = res.data;
       const [ano, numero] = data.bou.split('/');
       
@@ -89,7 +89,7 @@ export default function CadastroEntrada() {
   const loadNaturezas = async () => {
     setLoadingNaturezas(true);
     try {
-      const res = await api.get('/api/naturezas-penais/');
+      const res = await api.get('/naturezas-penais/');
       const data = res.data.results || res.data;
       setNaturezasList(data);
       setNaturezasSuggestions(data.slice(0, 15));
@@ -135,7 +135,7 @@ export default function CadastroEntrada() {
 
   const createNatureza = async (nome) => {
     try {
-      const res = await api.post('/api/naturezas-penais/', {
+      const res = await api.post('/naturezas-penais/', {
         nome: nome.toUpperCase(),
         tipo: 'TC'
       });
@@ -288,12 +288,12 @@ export default function CadastroEntrada() {
         noticiados: noticiadosPayload
       };
 
-      const url = id ? `/api/ocorrencias/${id}/` : '/api/ocorrencias/';
+      const url = id ? `/ocorrencias/${id}/` : '/ocorrencias/';
       const method = id ? 'put' : 'post';
       
-      const res = await axios[method](url, payload);
+      const res = await api[method](url, payload);
       
-      const pdfRes = await api.get(`/api/ocorrencias/${res.data.id}/imprimir_recibo/`);
+      const pdfRes = await api.get(`/ocorrencias/${res.data.id}/imprimir_recibo/`);
       window.open(pdfRes.data.url, '_blank');
       
       alert(id ? 'Alterações salvas com sucesso!' : 'Cadastro Finalizado. O Recibo foi aberto em nova aba!');
@@ -305,7 +305,7 @@ export default function CadastroEntrada() {
       if (errorData?.bou && errorData.bou.some(m => m.includes("já existe"))) {
         try {
           const bouStr = `${formData.bou_ano}/${formData.bou_numero}`;
-          const findRes = await api.get(`/api/ocorrencias/buscar_por_bou/?bou=${bouStr}`);
+          const findRes = await api.get(`/ocorrencias/buscar_por_bou/?bou=${bouStr}`);
           setDuplicateOcorrencia(findRes.data);
         } catch (findErr) {
           alert('Este BOU já está cadastrado, mas não foi possível localizar os detalhes.');
