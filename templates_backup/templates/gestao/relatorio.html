@@ -1,0 +1,190 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventário Geral - 6º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        body { background-color: #f8f9fa; font-family: "Times New Roman", Times, serif; color: #000; }
+        
+        .folha-a4 { 
+            background: white; 
+            width: 277mm; 
+            min-height: 190mm; 
+            padding: 12mm; 
+            margin: 10px auto; 
+            box-shadow: 0 0 5px rgba(0,0,0,0.1); 
+        }
+        
+        .cabecalho { 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 2px solid #000; 
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+        }
+        
+        .brasao { width: 60px; height: auto; margin-right: 20px; }
+        
+        .titulo-relatorio { 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .filtros-aplicados {
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        
+        table { font-size: 10px !important; width: 100%; border: 1px solid #000 !important; }
+        .thead-dark th { background-color: #212529 !important; color: white !important; text-transform: uppercase; }
+        
+        .subtotal-row { background-color: #f1f1f1 !important; font-weight: bold; font-size: 11px; }
+
+        @media print { 
+            .no-print { display: none !important; } 
+            .folha-a4 { box-shadow: none; margin: 0; width: 100%; padding: 5mm; } 
+            body { background: white; }
+            .table td, .table th { border: 1px solid #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container no-print mt-3">
+    <div class="card shadow-sm border-0 p-3 bg-dark text-white">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="small fw-bold">Vara Judicial</label>
+                <select name="vara" class="form-select form-select-sm">
+                    <option value="">Todas as Varas</option>
+                    <option value="VARA_01" {% if filtros.vara == "VARA_01" %}selected{% endif %}>1ª Vara Criminal</option>
+                    <option value="VARA_02" {% if filtros.vara == "VARA_02" %}selected{% endif %}>2ª Vara Criminal</option>
+                    <option value="VARA_03" {% if filtros.vara == "VARA_03" %}selected{% endif %}>3ª Vara Criminal</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold">Substância</label>
+                <select name="substancia" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    {% for valor, nome in drogas_lista %}
+                        <option value="{{ valor }}" {% if filtros.substancia == valor %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">FILTRAR INVENTÁRIO</button>
+                <button onclick="window.print()" type="button" class="btn btn-success btn-sm flex-grow-1 fw-bold">GERAR PDF / IMPRIMIR</button>
+                <a href="{% url 'painel' %}" class="btn btn-outline-light btn-sm">VOLTAR</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="folha-a4">
+    <div class="cabecalho">
+        <img src="{% static 'img/brasao_pmpr.svg' %}" alt="Brasão PMPR" class="brasao">
+        <div class="text-start">
+            <h6 class="mb-0 fw-bold">POLÍCIA MILITAR DO PARANÁ</h6>
+            <p class="mb-0 small">6º Batalhão de Polícia Militar - Cascavel</p>
+            <p class="mb-0 small text-muted">Setor de Gestão de Custódia e Evidências</p>
+        </div>
+        <div class="ms-auto text-end">
+            <small class="d-block">Gerado em: {{ data_atual|date:"d/m/Y H:i" }}</small>
+            <small class="d-block">Responsável: {{ request.user.get_full_name|default:"Administrador" }}</small>
+        </div>
+    </div>
+
+    <h5 class="titulo-relatorio">Mapa de Inventário Geral de Entorpecentes</h5>
+    
+    <div class="filtros-aplicados">
+        Filtros: Vara: {{ filtros.vara|default:"Todas" }} | Substância: {{ filtros.substancia|default:"Todas" }}
+    </div>
+
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="thead-dark text-center">
+            <tr>
+                <th style="width: 10%;">STATUS</th>
+                <th style="width: 12%;">BOU / ANO</th>
+                <th style="width: 12%;">Nº LACRE</th>
+                <th style="width: 20%;">VARA JUDICIAL</th>
+                <th style="width: 15%;">SUBSTÂNCIA</th>
+                <th style="width: 10%;">LOTE</th>
+                <th style="width: 11%;">PESO/QTD</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# SEÇÃO: PENDENTES #}
+            {% if pendentes %}
+            <tr class="table-warning"><td colspan="7" class="fw-bold"><i class="bi bi-exclamation-triangle"></i> AGUARDANDO CONFERÊNCIA / ENTRADA NO COFRE</td></tr>
+            {% for item in pendentes %}
+            <tr>
+                <td class="text-center small">PENDENTE</td>
+                <td class="text-center fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td class="text-center">{{ item.numero_lacre|default:"S/ LACRE" }}</td>
+                <td class="small">{{ item.noticiado.ocorrencia.get_vara_display }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-center">-</td>
+                <td class="text-end fw-bold">{{ item.peso_estimado|floatformat:3 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="subtotal-row"><td colspan="6" class="text-end">SUBTOTAL PENDENTES:</td><td class="text-end">{{ total_pendentes|floatformat:3 }}</td></tr>
+            {% endif %}
+
+            {# SEÇÃO: NO COFRE #}
+            {% if no_cofre %}
+            <tr class="table-success"><td colspan="7" class="fw-bold"><i class="bi bi-safe"></i> MATERIAIS SOB CUSTÓDIA (NO COFRE)</td></tr>
+            {% for item in no_cofre %}
+            <tr>
+                <td class="text-center small">NO COFRE</td>
+                <td class="text-center fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td class="text-center">{{ item.numero_lacre }}</td>
+                <td class="small">{{ item.noticiado.ocorrencia.get_vara_display }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-center">{{ item.lote.identificador|default:"-" }}</td>
+                <td class="text-end fw-bold text-success">{{ item.peso_real|floatformat:3 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="subtotal-row"><td colspan="6" class="text-end">SUBTOTAL NO COFRE:</td><td class="text-end">{{ total_no_cofre|floatformat:3 }}</td></tr>
+            {% endif %}
+
+            {# SEÇÃO: PRONTOS QUEIMA #}
+            {% if prontos %}
+            <tr class="table-primary"><td colspan="7" class="fw-bold"><i class="bi bi-fire"></i> AUTORIZADOS PARA INCINERAÇÃO</td></tr>
+            {% for item in prontos %}
+            <tr>
+                <td class="text-center small">AUTORIZADO</td>
+                <td class="text-center fw-bold">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td class="text-center">{{ item.numero_lacre }}</td>
+                <td class="small">{{ item.noticiado.ocorrencia.get_vara_display }}</td>
+                <td>{{ item.get_substancia_display }}</td>
+                <td class="text-center">{{ item.lote.identificador|default:"-" }}</td>
+                <td class="text-end fw-bold text-primary">{{ item.peso_real|floatformat:3 }} {{ item.get_unidade_display }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="subtotal-row"><td colspan="6" class="text-end">SUBTOTAL AUTORIZADOS:</td><td class="text-end">{{ total_prontos|floatformat:3 }}</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="row mt-4 pt-3 text-center">
+        <div class="col-6 offset-3">
+            <p class="mb-0">_________________________________________________________</p>
+            <p class="fw-bold mb-0" style="font-size: 12px;">{{ request.user.get_full_name|upper }}</p>
+            <p class="small">Encarregado da Custódia de Entorpecentes - 6º BPM</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-4 no-print">
+        <p class="text-muted" style="font-size: 10px;">Atenção: Este documento contém informações sensíveis de custódia policial.</p>
+    </div>
+</div>
+</body>
+</html>

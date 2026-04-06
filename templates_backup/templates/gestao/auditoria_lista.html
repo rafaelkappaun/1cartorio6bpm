@@ -1,0 +1,131 @@
+{% extends "painel_base.html" %}
+
+{% block content %}
+<style>
+    /* Estilo para a tabela de auditoria */
+    .table-audit thead th { 
+        background-color: #f8f9fa;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .badge-status { width: 100px; text-align: center; }
+    .status-no_cofre { background-color: #198754; color: white; }
+    .status-incinerado { background-color: #212529; color: white; }
+    .status-autorizado { background-color: #0dcaf0; color: #000; }
+    .status-pendente { background-color: #ffc107; color: #000; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body bg-dark text-white rounded-3 p-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3 mb-md-0">
+                        <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="bi bi-fingerprint fs-2 text-info"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0">CADEIA DE CUSTÓDIA</h5>
+                            <p class="text-white-50 small mb-0">Rastreamento de movimentações, lacres e pesos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <form method="GET" class="d-flex gap-2">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" name="q" class="form-control border-0 shadow-none" 
+                                   placeholder="BOU, Nº Lacre, Processo ou Noticiado..." 
+                                   value="{{ query|default:'' }}">
+                            <button type="submit" class="btn btn-info fw-bold px-4">BUSCAR</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 overflow-auto pb-2">
+        <a href="?q=" class="btn btn-sm btn-outline-secondary rounded-pill px-3 {% if not request.GET.status %}active{% endif %}">Todos</a>
+        <a href="?status=NO_COFRE" class="btn btn-sm btn-outline-success rounded-pill px-3">No Cofre</a>
+        <a href="?status=AUTORIZADO" class="btn btn-sm btn-outline-info rounded-pill px-3">Autorizados</a>
+        <a href="?status=INCINERADO" class="btn btn-sm btn-outline-dark rounded-pill px-3">Incinerados</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-muted text-uppercase small">Registros do Acervo</h6>
+            <span class="badge bg-light text-dark border">Total: {{ materiais.count }} itens</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-audit" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Identificação (BOU/Proc)</th>
+                            <th>Substância / Peso</th>
+                            <th>Nº Lacre</th>
+                            <th>Noticiado</th>
+                            <th>Localização / Status</th>
+                            <th class="text-center pe-4">Auditoria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in materiais %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ item.noticiado.ocorrencia.bou }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="bi bi-file-earmark-text me-1"></i>{{ item.noticiado.ocorrencia.processo|default:"---" }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-bold d-block">{{ item.get_substancia_display }}</span>
+                                <span class="text-success small fw-bold">{{ item.peso_formatado|default:"0,000 kg" }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border-dashed">
+                                    <i class="bi bi-upc-scan me-1 text-primary"></i>{{ item.numero_lacre }}
+                                </span>
+                            </td>
+                            <td class="text-muted">
+                                <div class="text-truncate" style="max-width: 180px;" title="{{ item.noticiado.nome }}">
+                                    {{ item.noticiado.nome|upper }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-status 
+                                    {% if item.status == 'INCINERADO' %}status-incinerado
+                                    {% elif item.status == 'NO_COFRE' %}status-no_cofre
+                                    {% elif item.status == 'AUTORIZADO' %}status-autorizado
+                                    {% else %}status-pendente{% endif %}">
+                                    {{ item.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-center pe-4">
+                                <a href="{% url 'detalhe_auditoria' item.id %}" class="btn btn-sm btn-outline-dark border-2 fw-bold shadow-sm">
+                                    <i class="bi bi-clock-history"></i> LOGS
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="bi bi-search fs-1 text-light d-block mb-3"></i>
+                                    <h5 class="text-muted">Nenhum registro encontrado</h5>
+                                    <p class="text-muted small">Tente outros termos de busca ou filtros.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

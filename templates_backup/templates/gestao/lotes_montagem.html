@@ -1,0 +1,224 @@
+{% extends "painel_base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Custom Scrollbar */
+    .table-responsive::-webkit-scrollbar { width: 6px; }
+    .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; }
+    .table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+    
+    .table thead th { 
+        font-size: 0.75rem; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px;
+        background-color: #f8f9fa;
+        z-index: 10;
+    }
+
+    /* Efeito de linha selecionada */
+    .row-selected { background-color: #e7f1ff !important; }
+    .table-hover tbody tr:hover { background-color: #f8fbff !important; }
+    
+    /* Badges e Status */
+    .bg-success-subtle { background-color: #d1e7dd; color: #0f5132 !important; }
+    .bg-warning-subtle { background-color: #fff3cd; color: #664d03 !important; }
+    
+    .card { border-radius: 12px; }
+    .sticky-top-table { position: sticky; top: 0; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-collection-play me-2 text-primary"></i>Montagem de Lotes de Incineração
+            </h3>
+            <p class="text-muted">Agrupe materiais autorizados para gerar o Termo de Remessa e Incineração.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm border-top border-4 border-primary">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-primary">Materiais Disponíveis</h5>
+                        <small class="text-muted">Somente itens com autorização judicial confirmada</small>
+                    </div>
+                    <span class="badge bg-primary rounded-pill shadow-sm">{{ fila_autorizados.count }} ITENS</span>
+                </div>
+                
+                <div class="card-body p-0">
+                    <form method="POST" action="{% url 'fechar_lote_manual' %}" id="formLote">
+                        {% csrf_token %}
+                        
+                        {% if total_na_fila >= 15 %}
+                        <div class="p-3 mx-3 mt-3 alert alert-primary border-0 shadow-sm d-flex align-items-center animate__animated animate__fadeIn">
+                            <i class="bi bi-lightning-charge-fill fs-4 me-3"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Sugestão de Fluxo</h6>
+                                <small>Existem <strong>{{ total_na_fila }}</strong> itens na fila. Recomendamos lotes de 15 unidades.</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" onclick="selecionarQuinze()">
+                                SELECIONAR 15
+                            </button>
+                        </div>
+                        {% endif %}
+
+                        <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0" id="tabelaMateriais">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-3 text-center" style="width: 50px;">
+                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                        </th>
+                                        <th>BOU / Ano</th>
+                                        <th>Substância / Peso</th>
+                                        <th class="ps-4">Noticiado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in fila_autorizados %}
+                                    <tr class="item-row">
+                                        <td class="ps-3 text-center">
+                                            <input type="checkbox" name="itens_selecionados" value="{{ item.id }}" class="form-check-input item-check">
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-primary">{{ item.noticiado.ocorrencia.bou }}</span>
+                                            <br><small class="text-muted" style="font-size: 10px;">{{ item.noticiado.ocorrencia.vara }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border fw-bold mb-1">{{ item.get_substancia_display }}</span>
+                                            <br><small class="text-success fw-bold">{{ item.peso_formatado }}</small>
+                                        </td>
+                                        <td class="ps-4">
+                                            <div class="text-uppercase small text-muted text-truncate" style="max-width: 200px;">
+                                                {{ item.noticiado.nome }}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5">
+                                            <i class="bi bi-check2-circle text-muted display-4 d-block mb-3 opacity-25"></i>
+                                            <p class="text-muted fw-bold">Nenhum material aguardando loteamento.</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {% if fila_autorizados %}
+                        <div class="p-3 bg-light border-top d-flex justify-content-between align-items-center">
+                            <div class="fs-6">
+                                <i class="bi bi-info-circle text-primary me-2"></i>
+                                <span class="fw-bold" id="contador-selecionados">0</span> itens marcados para este lote
+                            </div>
+                            <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4" id="btnCriarLote" disabled 
+                                    onclick="return confirm('Confirmar a criação deste lote?');">
+                                <i class="bi bi-plus-lg me-2"></i>CRIAR LOTE <span id="label-qtd"></span>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm border-top border-4 border-dark mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Lotes Recentes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for lote in lotes_existentes|slice:":5" %}
+                        <div class="list-group-item p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Lote #{{ lote.identificador }}</h6>
+                                    <small class="text-muted">{{ lote.data_criacao|date:"d/m/Y" }} • {{ lote.total_processos }} itens</small>
+                                </div>
+                                <div class="text-end">
+                                    {% if lote.status == 'INCINERADO' %}
+                                        <span class="badge bg-success-subtle border border-success mb-2" style="font-size: 0.6rem;">INCINERADO</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle border border-warning mb-2 text-dark" style="font-size: 0.6rem;">ABERTO</span>
+                                    {% endif %}
+                                    <br>
+                                    <a href="{% url 'imprimir_capa_lote' lote.id %}" target="_blank" class="btn btn-sm btn-outline-dark pt-0 pb-0 px-2" title="Imprimir Capa">
+                                        <i class="bi bi-printer small"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 py-3">
+                    <a href="{% url 'lotes_incineracao' %}" class="btn btn-sm btn-dark w-100 fw-bold">
+                        VER TODOS OS LOTES
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const itemChecks = document.querySelectorAll('.item-check');
+        const contador = document.getElementById('contador-selecionados');
+        const btnCriar = document.getElementById('btnCriarLote');
+        const labelQtd = document.getElementById('label-qtd');
+
+        function atualizarInterface() {
+            const selecionados = document.querySelectorAll('.item-check:checked');
+            const total = selecionados.length;
+            
+            // Atualiza contador e label do botão
+            contador.innerText = total;
+            labelQtd.innerText = total > 0 ? `(${total} ITENS)` : '';
+            btnCriar.disabled = (total === 0);
+
+            // Atualiza cor da linha
+            document.querySelectorAll('.item-row').forEach(row => {
+                const checkbox = row.querySelector('.item-check');
+                if (checkbox.checked) {
+                    row.classList.add('row-selected');
+                } else {
+                    row.classList.remove('row-selected');
+                }
+            });
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                itemChecks.forEach(c => c.checked = this.checked);
+                atualizarInterface();
+            });
+        }
+
+        itemChecks.forEach(c => {
+            c.addEventListener('change', atualizarInterface);
+        });
+    });
+
+    function selecionarQuinze() {
+        const checkboxes = document.querySelectorAll('.item-check');
+        // Desmarca tudo para evitar erro
+        checkboxes.forEach(c => c.checked = false);
+        // Marca os primeiros 15
+        for (let i = 0; i < 15 && i < checkboxes.length; i++) {
+            checkboxes[i].checked = true;
+        }
+        // Dispara evento de mudança para atualizar a UI
+        checkboxes[0].dispatchEvent(new Event('change'));
+        // Feedback visual
+        document.getElementById('btnCriarLote').scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+{% endblock %}

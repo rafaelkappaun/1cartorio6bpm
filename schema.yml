@@ -1,0 +1,2536 @@
+openapi: 3.0.3
+info:
+  title: Gestão de Cartório API
+  version: 1.0.0
+  description: API para o Sistema de Gestão de Cartório do 6º BPM
+paths:
+  /api/equipe-pm/:
+    get:
+      operationId: equipe_pm_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - equipe-pm
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEquipePMList'
+          description: ''
+    post:
+      operationId: equipe_pm_create
+      tags:
+      - equipe-pm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipePM'
+          description: ''
+  /api/equipe-pm/{id}/:
+    get:
+      operationId: equipe_pm_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Equipe PM.
+        required: true
+      tags:
+      - equipe-pm
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipePM'
+          description: ''
+    put:
+      operationId: equipe_pm_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Equipe PM.
+        required: true
+      tags:
+      - equipe-pm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EquipePM'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipePM'
+          description: ''
+    patch:
+      operationId: equipe_pm_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Equipe PM.
+        required: true
+      tags:
+      - equipe-pm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipePM'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipePM'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipePM'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipePM'
+          description: ''
+    delete:
+      operationId: equipe_pm_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Equipe PM.
+        required: true
+      tags:
+      - equipe-pm
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/equipe-pm/autocomplete/:
+    get:
+      operationId: equipe_pm_autocomplete_retrieve
+      tags:
+      - equipe-pm
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipePM'
+          description: ''
+  /api/lotes/:
+    get:
+      operationId: lotes_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - lotes
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLoteIncineracaoList'
+          description: ''
+    post:
+      operationId: lotes_create
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+  /api/lotes/{id}/:
+    get:
+      operationId: lotes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+    put:
+      operationId: lotes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+    patch:
+      operationId: lotes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLoteIncineracao'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+    delete:
+      operationId: lotes_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/lotes/{id}/adicionar_material_avulso/:
+    post:
+      operationId: lotes_adicionar_material_avulso_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+  /api/lotes/{id}/finalizar_lote/:
+    post:
+      operationId: lotes_finalizar_lote_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+  /api/lotes/{id}/imprimir_capa/:
+    get:
+      operationId: lotes_imprimir_capa_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Lote de Incineração.
+        required: true
+      tags:
+      - lotes
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+  /api/lotes/gerar_lotes_automaticos/:
+    post:
+      operationId: lotes_gerar_lotes_automaticos_create
+      tags:
+      - lotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoteIncineracao'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoteIncineracao'
+          description: ''
+  /api/materiais/:
+    get:
+      operationId: materiais_list
+      parameters:
+      - in: query
+        name: categoria
+        schema:
+          type: string
+          x-spec-enum-id: f267cc73601a979a
+          enum:
+          - DINHEIRO
+          - ENTORPECENTE
+          - FACA
+          - OUTROS
+          - SIMULACRO
+          - SOM
+        description: |-
+          * `ENTORPECENTE` - Entorpecente
+          * `SOM` - Equipamento de Som (Perturbação)
+          * `FACA` - Arma Branca / Faca
+          * `SIMULACRO` - Simulacro / Arma de Fogo
+          * `OUTROS` - Outros Objetos (Gerais)
+          * `DINHEIRO` - Dinheiro / Valores monetários
+      - in: query
+        name: data_fim
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: data_inicio
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: lote
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          x-spec-enum-id: 6ae5a2be094aecb5
+          enum:
+          - AGUARDANDO_GUIA
+          - AGUARDANDO_OFICIO
+          - ARMAZENADO
+          - AUTORIZADO
+          - CONSTATAÇÃO
+          - DEPOSITADO_JUDICIALMENTE
+          - EM_TRANSPORTE_FORUM
+          - ENTREGUE_AO_JUDICIARIO
+          - GUIA_GERADA
+          - INCINERADO
+          - OFICIO_GERADO
+          - RECEBIDO
+          - RETIRADO_PERICIA
+          - RETORNO_PERICIA
+          - TRANSPORTE
+        description: |-
+          * `RECEBIDO` - Entrada no Cartório (Lacre Conferido)
+          * `CONSTATAÇÃO` - Processamento (Auto de Constatação Realizado)
+          * `ARMAZENADO` - Armazenamento (No Cofre)
+          * `RETIRADO_PERICIA` - Saída Temporária (Enviado para Perícia Externa)
+          * `RETORNO_PERICIA` - Retorno de Perícia (Re-armazenado)
+          * `AUTORIZADO` - Aguardando Incineração (Ordem Judicial)
+          * `TRANSPORTE` - Em Transporte (Para Destruição)
+          * `INCINERADO` - Fim de Custódia (Incinerado)
+          * `AGUARDANDO_OFICIO` - Aguardando Geração de Ofício (Materiais Gerais)
+          * `OFICIO_GERADO` - Ofício Gerado (Aguardando Transporte)
+          * `EM_TRANSPORTE_FORUM` - Em Transporte (Para o Fórum)
+          * `ENTREGUE_AO_JUDICIARIO` - Entregue ao Judiciário (Fórum / Recibo Anexado)
+          * `AGUARDANDO_GUIA` - Aguardando Guia de Depósito (Dinheiro)
+          * `GUIA_GERADA` - Guia Gerada (Aguardando Depósito)
+          * `DEPOSITADO_JUDICIALMENTE` - Depositado (Comprovante Anexado)
+      tags:
+      - materiais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialList'
+          description: ''
+    post:
+      operationId: materiais_create
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Material'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Material'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/materiais/{id}/:
+    get:
+      operationId: materiais_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    put:
+      operationId: materiais_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Material'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Material'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    patch:
+      operationId: materiais_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterial'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterial'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterial'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+    delete:
+      operationId: materiais_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/materiais/{id}/autorizar_incineracao/:
+    post:
+      operationId: materiais_autorizar_incineracao_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Material'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Material'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/materiais/{id}/conferir_fisicamente/:
+    post:
+      operationId: materiais_conferir_fisicamente_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Material'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Material'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/materiais/{id}/gerar_oficio_word/:
+    get:
+      operationId: materiais_gerar_oficio_word_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Material.
+        required: true
+      tags:
+      - materiais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/materiais/gerar_oficio/:
+    post:
+      operationId: materiais_gerar_oficio_create
+      tags:
+      - materiais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Material'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Material'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+          description: ''
+  /api/naturezas-penais/:
+    get:
+      operationId: naturezas_penais_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - naturezas-penais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNaturezaPenalList'
+          description: ''
+    post:
+      operationId: naturezas_penais_create
+      tags:
+      - naturezas-penais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturezaPenal'
+          description: ''
+  /api/naturezas-penais/{id}/:
+    get:
+      operationId: naturezas_penais_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Natureza Penal.
+        required: true
+      tags:
+      - naturezas-penais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturezaPenal'
+          description: ''
+    put:
+      operationId: naturezas_penais_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Natureza Penal.
+        required: true
+      tags:
+      - naturezas-penais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NaturezaPenal'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturezaPenal'
+          description: ''
+    patch:
+      operationId: naturezas_penais_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Natureza Penal.
+        required: true
+      tags:
+      - naturezas-penais
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNaturezaPenal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNaturezaPenal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNaturezaPenal'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturezaPenal'
+          description: ''
+    delete:
+      operationId: naturezas_penais_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este Natureza Penal.
+        required: true
+      tags:
+      - naturezas-penais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/naturezas-penais/autocomplete/:
+    get:
+      operationId: naturezas_penais_autocomplete_retrieve
+      tags:
+      - naturezas-penais
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturezaPenal'
+          description: ''
+  /api/noticiados/:
+    get:
+      operationId: noticiados_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - noticiados
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNoticiadoList'
+          description: ''
+    post:
+      operationId: noticiados_create
+      tags:
+      - noticiados
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Noticiado'
+          description: ''
+  /api/noticiados/{id}/:
+    get:
+      operationId: noticiados_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este noticiado.
+        required: true
+      tags:
+      - noticiados
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Noticiado'
+          description: ''
+    put:
+      operationId: noticiados_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este noticiado.
+        required: true
+      tags:
+      - noticiados
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Noticiado'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Noticiado'
+          description: ''
+    patch:
+      operationId: noticiados_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este noticiado.
+        required: true
+      tags:
+      - noticiados
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNoticiado'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNoticiado'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNoticiado'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Noticiado'
+          description: ''
+    delete:
+      operationId: noticiados_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este noticiado.
+        required: true
+      tags:
+      - noticiados
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/ocorrencias/:
+    get:
+      operationId: ocorrencias_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - ocorrencias
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOcorrenciaList'
+          description: ''
+    post:
+      operationId: ocorrencias_create
+      tags:
+      - ocorrencias
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+          description: ''
+  /api/ocorrencias/{id}/:
+    get:
+      operationId: ocorrencias_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este ocorrencia.
+        required: true
+      tags:
+      - ocorrencias
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+          description: ''
+    put:
+      operationId: ocorrencias_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este ocorrencia.
+        required: true
+      tags:
+      - ocorrencias
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ocorrencia'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+          description: ''
+    patch:
+      operationId: ocorrencias_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este ocorrencia.
+        required: true
+      tags:
+      - ocorrencias
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOcorrencia'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOcorrencia'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOcorrencia'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+          description: ''
+    delete:
+      operationId: ocorrencias_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este ocorrencia.
+        required: true
+      tags:
+      - ocorrencias
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/ocorrencias/{id}/imprimir_recibo/:
+    get:
+      operationId: ocorrencias_imprimir_recibo_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este ocorrencia.
+        required: true
+      tags:
+      - ocorrencias
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+          description: ''
+  /api/token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+components:
+  schemas:
+    EquipePM:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 100
+        graduacao:
+          enum:
+          - SD
+          - CB
+          - 3SGT
+          - 2SGT
+          - 1SGT
+          - SUB
+          - 2TEN
+          - 1TEN
+          - CAP
+          - MAJ
+          type: string
+          description: |-
+            * `SD` - Soldado
+            * `CB` - Cabo
+            * `3SGT` - 3º Sargento
+            * `2SGT` - 2º Sargento
+            * `1SGT` - 1º Sargento
+            * `SUB` - Subtenente
+            * `2TEN` - 2º Tenente
+            * `1TEN` - 1º Tenente
+            * `CAP` - Capitão
+            * `MAJ` - Major
+          x-spec-enum-id: 1a45a9daf428d0d5
+        rg:
+          type: string
+          maxLength: 20
+        unidade:
+          enum:
+          - RPA
+          - DEAEV
+          - ROCAM
+          - GOTRAN
+          - CAVALARIA
+          - CHOQUE
+          - CHOQUE CANIL
+          - TRANSITO
+          - ROTAM
+          - CPU
+          - P2
+          - OUTRA
+          type: string
+          description: |-
+            * `RPA` - RPA
+            * `DEAEV` - DEAEV
+            * `ROCAM` - ROCAM
+            * `GOTRAN` - GOTRAN
+            * `CAVALARIA` - CAVALARIA
+            * `CHOQUE` - CHOQUE
+            * `CHOQUE CANIL` - CHOQUE CANIL
+            * `TRANSITO` - TRANSITO
+            * `ROTAM` - ROTAM
+            * `CPU` - CPU
+            * `P2` - P2
+            * `OUTRA` - Outra Unidade (Especificar)
+          x-spec-enum-id: 553441ace8f1714e
+      required:
+      - graduacao
+      - id
+      - nome
+      - rg
+    LoteIncineracao:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        identificador:
+          type: string
+          title: Código do Lote
+          maxLength: 50
+        data_incineracao:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          enum:
+          - ABERTO
+          - INCINERADO
+          type: string
+          description: |-
+            * `ABERTO` - Aberto
+            * `INCINERADO` - Incinerado
+          x-spec-enum-id: ac56e117664a4d88
+        eprotocolo_geral:
+          type: string
+          nullable: true
+          title: EProtocolo do Comando
+          maxLength: 50
+        materiais:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - data_criacao
+      - id
+      - identificador
+      - materiais
+    Material:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        noticiado:
+          type: integer
+          readOnly: true
+        categoria:
+          enum:
+          - ENTORPECENTE
+          - SOM
+          - FACA
+          - SIMULACRO
+          - OUTROS
+          - DINHEIRO
+          type: string
+          description: |-
+            * `ENTORPECENTE` - Entorpecente
+            * `SOM` - Equipamento de Som (Perturbação)
+            * `FACA` - Arma Branca / Faca
+            * `SIMULACRO` - Simulacro / Arma de Fogo
+            * `OUTROS` - Outros Objetos (Gerais)
+            * `DINHEIRO` - Dinheiro / Valores monetários
+          x-spec-enum-id: f267cc73601a979a
+        substancia:
+          enum:
+          - MACONHA
+          - SKUNK
+          - HASHISH
+          - COCAINA_PO
+          - COCAINA_CRA
+          - OPIACEOS
+          - MDF
+          - LSD
+          - ECSTASY
+          - METANFETAMINA
+          - COCAINAMINA
+          - RECEPTACULO
+          - SEMENTE
+          - COLHEITA
+          - OUTRA
+          - ''
+          - null
+          type: string
+          description: |-
+            * `MACONHA` - Maconha (Flor/Cume)
+            * `SKUNK` - Skunk (Maconha Importada)
+            * `HASHISH` - Haxixe (Hashish)
+            * `COCAINA_PO` - Cocaína (Pó/Branca)
+            * `COCAINA_CRA` - Crack (Cocaína Base)
+            * `OPIACEOS` - Ópio / Heroína
+            * `MDF` - Maconha de Fumo (MDF)
+            * `LSD` - LSD (Ácido)
+            * `ECSTASY` - Ecstasy / MDMA
+            * `METANFETAMINA` - Metanfetamina (Crystal)
+            * `COCAINAMINA` - Cocainaína (Merla)
+            * `RECEPTACULO` - Receptáculo/Eppendorf
+            * `SEMENTE` - Semente de Maconha
+            * `COLHEITA` - Planta/Colheita de Maconha
+            * `OUTRA` - Outra Substância
+          x-spec-enum-id: fdaa34e89d63bb2a
+          nullable: true
+        outra_substancia:
+          type: string
+          nullable: true
+          maxLength: 100
+        nome_popular:
+          type: string
+          nullable: true
+          title: Nome Popular / Característica
+          maxLength: 100
+        peso_estimado:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        peso_real:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        unidade:
+          enum:
+          - G
+          - KG
+          - UN
+          - ''
+          - null
+          type: string
+          description: |-
+            * `G` - Gramas (g)
+            * `KG` - Quilos (kg)
+            * `UN` - Unidades (Pés/Comprimidos)
+          x-spec-enum-id: 4628c5d6cb1d9dfd
+          nullable: true
+        lote:
+          type: integer
+          nullable: true
+        descricao_geral:
+          type: string
+          nullable: true
+          description: 'Ex: Marca do som, modelo do simulacro, etc.'
+        valor_monetario:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          title: Valor em Dinheiro (R$)
+        recibo_forum:
+          type: string
+          format: uri
+          nullable: true
+          title: Recibo Assinado do Fórum
+        comprovante_deposito:
+          type: string
+          format: uri
+          nullable: true
+          title: Comprovante de Depósito PIX/TED
+        numero_lacre:
+          type: string
+          nullable: true
+          title: Nº Lacre (Cadeia de Custódia)
+          maxLength: 50
+        localizacao_no_cofre:
+          type: string
+          nullable: true
+          description: 'Ex: Armário 1, Prateleira B'
+          maxLength: 100
+        status:
+          enum:
+          - RECEBIDO
+          - CONSTATAÇÃO
+          - ARMAZENADO
+          - RETIRADO_PERICIA
+          - RETORNO_PERICIA
+          - AUTORIZADO
+          - TRANSPORTE
+          - INCINERADO
+          - AGUARDANDO_OFICIO
+          - OFICIO_GERADO
+          - EM_TRANSPORTE_FORUM
+          - ENTREGUE_AO_JUDICIARIO
+          - AGUARDANDO_GUIA
+          - GUIA_GERADA
+          - DEPOSITADO_JUDICIALMENTE
+          type: string
+          description: |-
+            * `RECEBIDO` - Entrada no Cartório (Lacre Conferido)
+            * `CONSTATAÇÃO` - Processamento (Auto de Constatação Realizado)
+            * `ARMAZENADO` - Armazenamento (No Cofre)
+            * `RETIRADO_PERICIA` - Saída Temporária (Enviado para Perícia Externa)
+            * `RETORNO_PERICIA` - Retorno de Perícia (Re-armazenado)
+            * `AUTORIZADO` - Aguardando Incineração (Ordem Judicial)
+            * `TRANSPORTE` - Em Transporte (Para Destruição)
+            * `INCINERADO` - Fim de Custódia (Incinerado)
+            * `AGUARDANDO_OFICIO` - Aguardando Geração de Ofício (Materiais Gerais)
+            * `OFICIO_GERADO` - Ofício Gerado (Aguardando Transporte)
+            * `EM_TRANSPORTE_FORUM` - Em Transporte (Para o Fórum)
+            * `ENTREGUE_AO_JUDICIARIO` - Entregue ao Judiciário (Fórum / Recibo Anexado)
+            * `AGUARDANDO_GUIA` - Aguardando Guia de Depósito (Dinheiro)
+            * `GUIA_GERADA` - Guia Gerada (Aguardando Depósito)
+            * `DEPOSITADO_JUDICIALMENTE` - Depositado (Comprovante Anexado)
+          x-spec-enum-id: 6ae5a2be094aecb5
+        eprotocolo_geral:
+          type: string
+          nullable: true
+        descricao_amigavel:
+          type: string
+          readOnly: true
+        peso_formatado:
+          type: string
+          readOnly: true
+        historico:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistroHistorico'
+          readOnly: true
+        ocorrencia_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        bou:
+          type: string
+          nullable: true
+          readOnly: true
+        processo:
+          type: string
+          nullable: true
+          readOnly: true
+        unidade_origem:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        ultima_alteracao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - bou
+      - data_criacao
+      - descricao_amigavel
+      - historico
+      - id
+      - noticiado
+      - ocorrencia_id
+      - peso_formatado
+      - processo
+      - ultima_alteracao
+      - unidade_origem
+    NaturezaPenal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 255
+        tipo:
+          enum:
+          - TC
+          - IP
+          type: string
+          description: |-
+            * `TC` - Termo Circunstanciado
+            * `IP` - Inquérito Policial
+          x-spec-enum-id: ee2b031f42b60ca2
+      required:
+      - id
+      - nome
+      - tipo
+    Noticiado:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 200
+        materiais:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        depositario_fiel:
+          type: boolean
+          title: Depositário Fiel
+        observacao:
+          type: string
+          nullable: true
+          title: Observação
+      required:
+      - data_criacao
+      - id
+      - nome
+    Ocorrencia:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        bou:
+          type: string
+          maxLength: 20
+        vara:
+          enum:
+          - VARA_01
+          - VARA_02
+          - VARA_03
+          type: string
+          description: |-
+            * `VARA_01` - 1ª Vara Criminal
+            * `VARA_02` - 2ª Vara Criminal
+            * `VARA_03` - 3ª Vara Criminal
+          x-spec-enum-id: 75e3c94a67dd4b4a
+        processo:
+          type: string
+          nullable: true
+          title: PROJUDI
+          maxLength: 30
+        policial_nome:
+          type: string
+          nullable: true
+          maxLength: 100
+        policial_graduacao:
+          enum:
+          - SD
+          - CB
+          - 3SGT
+          - 2SGT
+          - 1SGT
+          - SUB
+          - 2TEN
+          - 1TEN
+          - CAP
+          - MAJ
+          - ''
+          - null
+          type: string
+          description: |-
+            * `SD` - Soldado
+            * `CB` - Cabo
+            * `3SGT` - 3º Sargento
+            * `2SGT` - 2º Sargento
+            * `1SGT` - 1º Sargento
+            * `SUB` - Subtenente
+            * `2TEN` - 2º Tenente
+            * `1TEN` - 1º Tenente
+            * `CAP` - Capitão
+            * `MAJ` - Major
+          x-spec-enum-id: 1a45a9daf428d0d5
+          nullable: true
+        rg_policial:
+          type: string
+          nullable: true
+          maxLength: 20
+        unidade_origem:
+          enum:
+          - RPA
+          - DEAEV
+          - ROCAM
+          - GOTRAN
+          - CAVALARIA
+          - CHOQUE
+          - CHOQUE CANIL
+          - TRANSITO
+          - ROTAM
+          - CPU
+          - P2
+          - OUTRA
+          type: string
+          description: |-
+            * `RPA` - RPA
+            * `DEAEV` - DEAEV
+            * `ROCAM` - ROCAM
+            * `GOTRAN` - GOTRAN
+            * `CAVALARIA` - CAVALARIA
+            * `CHOQUE` - CHOQUE
+            * `CHOQUE CANIL` - CHOQUE CANIL
+            * `TRANSITO` - TRANSITO
+            * `ROTAM` - ROTAM
+            * `CPU` - CPU
+            * `P2` - P2
+            * `OUTRA` - Outra Unidade (Especificar)
+          x-spec-enum-id: 553441ace8f1714e
+        natureza_penal:
+          type: string
+          nullable: true
+          title: Tipos Penais / Natureza
+          maxLength: 255
+        data_registro_bou:
+          type: string
+          format: date
+          nullable: true
+          title: Data do Fato (BOU)
+        observacao:
+          type: string
+          nullable: true
+          title: Observação
+        noticiados:
+          type: array
+          items:
+            $ref: '#/components/schemas/Noticiado'
+        criado_por:
+          type: integer
+          readOnly: true
+          nullable: true
+        cartorario_nome:
+          type: string
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - bou
+      - cartorario_nome
+      - criado_por
+      - data_criacao
+      - id
+      - vara
+    PaginatedEquipePMList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EquipePM'
+    PaginatedLoteIncineracaoList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoteIncineracao'
+    PaginatedMaterialList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+    PaginatedNaturezaPenalList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NaturezaPenal'
+    PaginatedNoticiadoList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Noticiado'
+    PaginatedOcorrenciaList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ocorrencia'
+    PatchedEquipePM:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 100
+        graduacao:
+          enum:
+          - SD
+          - CB
+          - 3SGT
+          - 2SGT
+          - 1SGT
+          - SUB
+          - 2TEN
+          - 1TEN
+          - CAP
+          - MAJ
+          type: string
+          description: |-
+            * `SD` - Soldado
+            * `CB` - Cabo
+            * `3SGT` - 3º Sargento
+            * `2SGT` - 2º Sargento
+            * `1SGT` - 1º Sargento
+            * `SUB` - Subtenente
+            * `2TEN` - 2º Tenente
+            * `1TEN` - 1º Tenente
+            * `CAP` - Capitão
+            * `MAJ` - Major
+          x-spec-enum-id: 1a45a9daf428d0d5
+        rg:
+          type: string
+          maxLength: 20
+        unidade:
+          enum:
+          - RPA
+          - DEAEV
+          - ROCAM
+          - GOTRAN
+          - CAVALARIA
+          - CHOQUE
+          - CHOQUE CANIL
+          - TRANSITO
+          - ROTAM
+          - CPU
+          - P2
+          - OUTRA
+          type: string
+          description: |-
+            * `RPA` - RPA
+            * `DEAEV` - DEAEV
+            * `ROCAM` - ROCAM
+            * `GOTRAN` - GOTRAN
+            * `CAVALARIA` - CAVALARIA
+            * `CHOQUE` - CHOQUE
+            * `CHOQUE CANIL` - CHOQUE CANIL
+            * `TRANSITO` - TRANSITO
+            * `ROTAM` - ROTAM
+            * `CPU` - CPU
+            * `P2` - P2
+            * `OUTRA` - Outra Unidade (Especificar)
+          x-spec-enum-id: 553441ace8f1714e
+    PatchedLoteIncineracao:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        identificador:
+          type: string
+          title: Código do Lote
+          maxLength: 50
+        data_incineracao:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          enum:
+          - ABERTO
+          - INCINERADO
+          type: string
+          description: |-
+            * `ABERTO` - Aberto
+            * `INCINERADO` - Incinerado
+          x-spec-enum-id: ac56e117664a4d88
+        eprotocolo_geral:
+          type: string
+          nullable: true
+          title: EProtocolo do Comando
+          maxLength: 50
+        materiais:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMaterial:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        noticiado:
+          type: integer
+          readOnly: true
+        categoria:
+          enum:
+          - ENTORPECENTE
+          - SOM
+          - FACA
+          - SIMULACRO
+          - OUTROS
+          - DINHEIRO
+          type: string
+          description: |-
+            * `ENTORPECENTE` - Entorpecente
+            * `SOM` - Equipamento de Som (Perturbação)
+            * `FACA` - Arma Branca / Faca
+            * `SIMULACRO` - Simulacro / Arma de Fogo
+            * `OUTROS` - Outros Objetos (Gerais)
+            * `DINHEIRO` - Dinheiro / Valores monetários
+          x-spec-enum-id: f267cc73601a979a
+        substancia:
+          enum:
+          - MACONHA
+          - SKUNK
+          - HASHISH
+          - COCAINA_PO
+          - COCAINA_CRA
+          - OPIACEOS
+          - MDF
+          - LSD
+          - ECSTASY
+          - METANFETAMINA
+          - COCAINAMINA
+          - RECEPTACULO
+          - SEMENTE
+          - COLHEITA
+          - OUTRA
+          - ''
+          - null
+          type: string
+          description: |-
+            * `MACONHA` - Maconha (Flor/Cume)
+            * `SKUNK` - Skunk (Maconha Importada)
+            * `HASHISH` - Haxixe (Hashish)
+            * `COCAINA_PO` - Cocaína (Pó/Branca)
+            * `COCAINA_CRA` - Crack (Cocaína Base)
+            * `OPIACEOS` - Ópio / Heroína
+            * `MDF` - Maconha de Fumo (MDF)
+            * `LSD` - LSD (Ácido)
+            * `ECSTASY` - Ecstasy / MDMA
+            * `METANFETAMINA` - Metanfetamina (Crystal)
+            * `COCAINAMINA` - Cocainaína (Merla)
+            * `RECEPTACULO` - Receptáculo/Eppendorf
+            * `SEMENTE` - Semente de Maconha
+            * `COLHEITA` - Planta/Colheita de Maconha
+            * `OUTRA` - Outra Substância
+          x-spec-enum-id: fdaa34e89d63bb2a
+          nullable: true
+        outra_substancia:
+          type: string
+          nullable: true
+          maxLength: 100
+        nome_popular:
+          type: string
+          nullable: true
+          title: Nome Popular / Característica
+          maxLength: 100
+        peso_estimado:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        peso_real:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        unidade:
+          enum:
+          - G
+          - KG
+          - UN
+          - ''
+          - null
+          type: string
+          description: |-
+            * `G` - Gramas (g)
+            * `KG` - Quilos (kg)
+            * `UN` - Unidades (Pés/Comprimidos)
+          x-spec-enum-id: 4628c5d6cb1d9dfd
+          nullable: true
+        lote:
+          type: integer
+          nullable: true
+        descricao_geral:
+          type: string
+          nullable: true
+          description: 'Ex: Marca do som, modelo do simulacro, etc.'
+        valor_monetario:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          title: Valor em Dinheiro (R$)
+        recibo_forum:
+          type: string
+          format: uri
+          nullable: true
+          title: Recibo Assinado do Fórum
+        comprovante_deposito:
+          type: string
+          format: uri
+          nullable: true
+          title: Comprovante de Depósito PIX/TED
+        numero_lacre:
+          type: string
+          nullable: true
+          title: Nº Lacre (Cadeia de Custódia)
+          maxLength: 50
+        localizacao_no_cofre:
+          type: string
+          nullable: true
+          description: 'Ex: Armário 1, Prateleira B'
+          maxLength: 100
+        status:
+          enum:
+          - RECEBIDO
+          - CONSTATAÇÃO
+          - ARMAZENADO
+          - RETIRADO_PERICIA
+          - RETORNO_PERICIA
+          - AUTORIZADO
+          - TRANSPORTE
+          - INCINERADO
+          - AGUARDANDO_OFICIO
+          - OFICIO_GERADO
+          - EM_TRANSPORTE_FORUM
+          - ENTREGUE_AO_JUDICIARIO
+          - AGUARDANDO_GUIA
+          - GUIA_GERADA
+          - DEPOSITADO_JUDICIALMENTE
+          type: string
+          description: |-
+            * `RECEBIDO` - Entrada no Cartório (Lacre Conferido)
+            * `CONSTATAÇÃO` - Processamento (Auto de Constatação Realizado)
+            * `ARMAZENADO` - Armazenamento (No Cofre)
+            * `RETIRADO_PERICIA` - Saída Temporária (Enviado para Perícia Externa)
+            * `RETORNO_PERICIA` - Retorno de Perícia (Re-armazenado)
+            * `AUTORIZADO` - Aguardando Incineração (Ordem Judicial)
+            * `TRANSPORTE` - Em Transporte (Para Destruição)
+            * `INCINERADO` - Fim de Custódia (Incinerado)
+            * `AGUARDANDO_OFICIO` - Aguardando Geração de Ofício (Materiais Gerais)
+            * `OFICIO_GERADO` - Ofício Gerado (Aguardando Transporte)
+            * `EM_TRANSPORTE_FORUM` - Em Transporte (Para o Fórum)
+            * `ENTREGUE_AO_JUDICIARIO` - Entregue ao Judiciário (Fórum / Recibo Anexado)
+            * `AGUARDANDO_GUIA` - Aguardando Guia de Depósito (Dinheiro)
+            * `GUIA_GERADA` - Guia Gerada (Aguardando Depósito)
+            * `DEPOSITADO_JUDICIALMENTE` - Depositado (Comprovante Anexado)
+          x-spec-enum-id: 6ae5a2be094aecb5
+        eprotocolo_geral:
+          type: string
+          nullable: true
+        descricao_amigavel:
+          type: string
+          readOnly: true
+        peso_formatado:
+          type: string
+          readOnly: true
+        historico:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistroHistorico'
+          readOnly: true
+        ocorrencia_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        bou:
+          type: string
+          nullable: true
+          readOnly: true
+        processo:
+          type: string
+          nullable: true
+          readOnly: true
+        unidade_origem:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        ultima_alteracao:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedNaturezaPenal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 255
+        tipo:
+          enum:
+          - TC
+          - IP
+          type: string
+          description: |-
+            * `TC` - Termo Circunstanciado
+            * `IP` - Inquérito Policial
+          x-spec-enum-id: ee2b031f42b60ca2
+    PatchedNoticiado:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 200
+        materiais:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        depositario_fiel:
+          type: boolean
+          title: Depositário Fiel
+        observacao:
+          type: string
+          nullable: true
+          title: Observação
+    PatchedOcorrencia:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        bou:
+          type: string
+          maxLength: 20
+        vara:
+          enum:
+          - VARA_01
+          - VARA_02
+          - VARA_03
+          type: string
+          description: |-
+            * `VARA_01` - 1ª Vara Criminal
+            * `VARA_02` - 2ª Vara Criminal
+            * `VARA_03` - 3ª Vara Criminal
+          x-spec-enum-id: 75e3c94a67dd4b4a
+        processo:
+          type: string
+          nullable: true
+          title: PROJUDI
+          maxLength: 30
+        policial_nome:
+          type: string
+          nullable: true
+          maxLength: 100
+        policial_graduacao:
+          enum:
+          - SD
+          - CB
+          - 3SGT
+          - 2SGT
+          - 1SGT
+          - SUB
+          - 2TEN
+          - 1TEN
+          - CAP
+          - MAJ
+          - ''
+          - null
+          type: string
+          description: |-
+            * `SD` - Soldado
+            * `CB` - Cabo
+            * `3SGT` - 3º Sargento
+            * `2SGT` - 2º Sargento
+            * `1SGT` - 1º Sargento
+            * `SUB` - Subtenente
+            * `2TEN` - 2º Tenente
+            * `1TEN` - 1º Tenente
+            * `CAP` - Capitão
+            * `MAJ` - Major
+          x-spec-enum-id: 1a45a9daf428d0d5
+          nullable: true
+        rg_policial:
+          type: string
+          nullable: true
+          maxLength: 20
+        unidade_origem:
+          enum:
+          - RPA
+          - DEAEV
+          - ROCAM
+          - GOTRAN
+          - CAVALARIA
+          - CHOQUE
+          - CHOQUE CANIL
+          - TRANSITO
+          - ROTAM
+          - CPU
+          - P2
+          - OUTRA
+          type: string
+          description: |-
+            * `RPA` - RPA
+            * `DEAEV` - DEAEV
+            * `ROCAM` - ROCAM
+            * `GOTRAN` - GOTRAN
+            * `CAVALARIA` - CAVALARIA
+            * `CHOQUE` - CHOQUE
+            * `CHOQUE CANIL` - CHOQUE CANIL
+            * `TRANSITO` - TRANSITO
+            * `ROTAM` - ROTAM
+            * `CPU` - CPU
+            * `P2` - P2
+            * `OUTRA` - Outra Unidade (Especificar)
+          x-spec-enum-id: 553441ace8f1714e
+        natureza_penal:
+          type: string
+          nullable: true
+          title: Tipos Penais / Natureza
+          maxLength: 255
+        data_registro_bou:
+          type: string
+          format: date
+          nullable: true
+          title: Data do Fato (BOU)
+        observacao:
+          type: string
+          nullable: true
+          title: Observação
+        noticiados:
+          type: array
+          items:
+            $ref: '#/components/schemas/Noticiado'
+        criado_por:
+          type: integer
+          readOnly: true
+          nullable: true
+        cartorario_nome:
+          type: string
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+    RegistroHistorico:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status_na_epoca:
+          enum:
+          - RECEBIDO
+          - CONSTATAÇÃO
+          - ARMAZENADO
+          - RETIRADO_PERICIA
+          - RETORNO_PERICIA
+          - AUTORIZADO
+          - TRANSPORTE
+          - INCINERADO
+          - AGUARDANDO_OFICIO
+          - OFICIO_GERADO
+          - EM_TRANSPORTE_FORUM
+          - ENTREGUE_AO_JUDICIARIO
+          - AGUARDANDO_GUIA
+          - GUIA_GERADA
+          - DEPOSITADO_JUDICIALMENTE
+          type: string
+          description: |-
+            * `RECEBIDO` - Entrada no Cartório (Lacre Conferido)
+            * `CONSTATAÇÃO` - Processamento (Auto de Constatação Realizado)
+            * `ARMAZENADO` - Armazenamento (No Cofre)
+            * `RETIRADO_PERICIA` - Saída Temporária (Enviado para Perícia Externa)
+            * `RETORNO_PERICIA` - Retorno de Perícia (Re-armazenado)
+            * `AUTORIZADO` - Aguardando Incineração (Ordem Judicial)
+            * `TRANSPORTE` - Em Transporte (Para Destruição)
+            * `INCINERADO` - Fim de Custódia (Incinerado)
+            * `AGUARDANDO_OFICIO` - Aguardando Geração de Ofício (Materiais Gerais)
+            * `OFICIO_GERADO` - Ofício Gerado (Aguardando Transporte)
+            * `EM_TRANSPORTE_FORUM` - Em Transporte (Para o Fórum)
+            * `ENTREGUE_AO_JUDICIARIO` - Entregue ao Judiciário (Fórum / Recibo Anexado)
+            * `AGUARDANDO_GUIA` - Aguardando Guia de Depósito (Dinheiro)
+            * `GUIA_GERADA` - Guia Gerada (Aguardando Depósito)
+            * `DEPOSITADO_JUDICIALMENTE` - Depositado (Comprovante Anexado)
+          x-spec-enum-id: 6ae5a2be094aecb5
+        observacao:
+          type: string
+          nullable: true
+          description: 'Descreva: ''Droga guardada no cofre'', ''Retirada para pesagem
+            real'', etc.'
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        criado_por:
+          type: integer
+          readOnly: true
+          nullable: true
+        criado_por_nome:
+          type: string
+          readOnly: true
+      required:
+      - criado_por
+      - criado_por_nome
+      - data_criacao
+      - id
+      - status_na_epoca
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,0 +1,306 @@
+{% extends "painel_base.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://unpkg.com/imask"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+
+<div class="container-fluid py-4">
+    <form method="POST" action="{% url 'registrar' %}" id="formPrincipal" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4 border-top border-4 border-success">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-primary mb-0">
+                        <i class="bi bi-shield-check me-2"></i>1. DADOS DA OCORRÊNCIA E CUSTÓDIA
+                    </h6>
+                    <span class="badge bg-dark text-white p-2">
+    OPERADOR: {% if user.is_authenticated %}{{ user.get_full_name|upper|default:user.username|upper }}{% else %}SISTEMA{% endif %}
+</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Data do Fato *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i></span>
+                            <input type="text" name="data_registro" id="data_registro" class="form-control" placeholder="00/00/0000" required>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Nº BOU (Ano/Sequência) *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light fw-bold" id="ano_bou_prefix">0000/</span>
+                            <input type="text" name="bou_sequencia" id="bou_sequencia" class="form-control" 
+                                   placeholder="0000000" maxlength="10" required 
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="hidden" name="bou" id="bou_completo">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Nº PROJUDI (Processo)</label>
+                        <input type="text" name="processo" id="mask_projudi" class="form-control" placeholder="0000000-00.2026.8.16.0021">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Vara Destino *</label>
+                        <select name="vara" class="form-select" required>
+                            <option value="" selected disabled>Selecione a Vara...</option>
+                            {% for valor, nome in VARA_CHOICES %}
+                                <option value="{{ valor }}">{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Unidade PM *</label>
+                        <select name="unidade_origem" class="form-select" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            <option value="RPA">RPA</option>
+                            <option value="ROTAM">ROTAM</option>
+                            <option value="ROCAM">ROCAM</option>
+                            <option value="CHOQUE">CHOQUE</option>
+                            <option value="P2">P2</option>
+                            <option value="OUTRA">OUTRA</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">RG do Policial *</label>
+                        <input type="text" name="rg_policial" class="form-control" placeholder="Apenas números" required
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Graduação</label>
+                        <select name="policial_graduacao" class="form-select">
+                            {% for valor, nome in GRADUACAO_CHOICES %}
+                                <option value="{{ valor }}">{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Nome do Policial (Entregador) *</label>
+                        <input type="text" name="policial_nome" class="form-control text-uppercase" placeholder="NOME COMPLETO" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-capslock-fill me-2"></i>2. NOTICIADOS E MATERIAIS</h6>
+                <button type="button" class="btn btn-primary btn-sm" id="btnAdicionar">
+                    <i class="bi bi-plus-lg me-1"></i> Adicionar Noticiado/Droga
+                </button>
+            </div>
+            
+            <div class="card-body bg-light" id="container-noticiados">
+                <div class="row g-2 border rounded p-3 mb-3 bg-white item-noticiado shadow-sm">
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted">Nome do Noticiado</label>
+                        <input type="text" name="nome_noticiado[]" class="form-control text-uppercase" placeholder="NOME DO PRESO" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted">Substância *</label>
+                        <select name="substancia[]" class="form-select select-substancia" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for valor, nome in DROGAS_CHOICES %}
+                                <option value="{{ valor }}">{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted">Unidade *</label>
+                        <select name="unidade[]" class="form-select select-unidade-medida" required>
+                            <option value="G">Gramas (g)</option>
+                            <option value="KG">Quilos (kg)</option>
+                            <option value="UN">Unidades (Pés/Comp)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted">Peso/Qtd Est. *</label>
+                        <input type="text" name="peso_estimado[]" class="form-control mask-peso" placeholder="0,000" required>
+                    </div>
+
+                    <div class="col-md-1">
+                        <label class="small fw-bold text-muted">Nº Lacre</label>
+                        <input type="text" name="lacre[]" class="form-control">
+                    </div>
+
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-danger w-100 btn-remover" style="display:none;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-lg mb-5">
+            <i class="bi bi-save2 me-2"></i> FINALIZAR REGISTRO E GERAR RECIBO
+        </button>
+    </form>
+</div>
+
+<script>
+    // 1. CALENDÁRIO DINÂMICO + LÓGICA DO BOU
+    const anoBouLabel = document.getElementById('ano_bou_prefix');
+    const bouSeqInput = document.getElementById('bou_sequencia');
+    const bouHidden = document.getElementById('bou_completo');
+
+    // Define ano atual como padrão caso o usuário não escolha data
+    const anoPadrao = new Date().getFullYear();
+    anoBouLabel.innerText = anoPadrao + '/';
+
+    const fp = flatpickr("#data_registro", {
+        locale: "pt",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        maxDate: "today",
+        onChange: function(selectedDates, dateStr) {
+            if (dateStr) {
+                const ano = dateStr.split('-')[0];
+                anoBouLabel.innerText = ano + '/';
+                atualizarBou();
+            }
+        }
+    });
+
+    function atualizarBou() {
+        bouHidden.value = anoBouLabel.innerText + bouSeqInput.value;
+    }
+    bouSeqInput.addEventListener('input', atualizarBou);
+
+    // 2. MÁSCARAS E REGRAS POR LINHA
+    const mascarasAtivas = new Map();
+
+    function aplicarMascara(input) {
+        const row = input.closest('.item-noticiado');
+        const unidade = row.querySelector('.select-unidade-medida').value;
+        
+        if (mascarasAtivas.has(input)) { mascarasAtivas.get(input).destroy(); }
+
+        let config = (unidade === 'UN') 
+            ? { mask: Number, scale: 0, thousandsSeparator: '' }
+            : { mask: Number, scale: 3, radix: ',', mapToRadix: ['.'], padFractionalZeros: true, thousandsSeparator: '.' };
+        
+        mascarasAtivas.set(input, IMask(input, config));
+    }
+
+    function monitorarLinha(row) {
+        const selectSubstancia = row.querySelector('.select-substancia');
+        const selectUnidade = row.querySelector('.select-unidade-medida');
+        const inputPeso = row.querySelector('.mask-peso');
+
+        selectSubstancia.addEventListener('change', function() {
+            // Se for planta/pé de maconha, trava em Unidade (UN)
+            if (this.value === 'PE_MACONHA') {
+                selectUnidade.value = 'UN';
+                selectUnidade.classList.add('bg-light');
+                selectUnidade.style.pointerEvents = "none";
+            } else {
+                selectUnidade.classList.remove('bg-light');
+                selectUnidade.style.pointerEvents = "auto";
+            }
+            inputPeso.value = '';
+            aplicarMascara(inputPeso);
+        });
+
+        selectUnidade.addEventListener('change', () => {
+            inputPeso.value = '';
+            aplicarMascara(inputPeso);
+        });
+
+        aplicarMascara(inputPeso);
+    }
+
+    // Inicialização de Máscaras Fixas
+    IMask(document.getElementById('mask_projudi'), { mask: '0000000-00.0000.8.16.0000' });
+    document.querySelectorAll('.item-noticiado').forEach(monitorarLinha);
+
+    // 3. ADICIONAR/REMOVER LINHAS
+    document.getElementById('btnAdicionar').addEventListener('click', function() {
+        const container = document.getElementById('container-noticiados');
+        const novaLinha = container.querySelector('.item-noticiado').cloneNode(true);
+        
+        novaLinha.querySelectorAll('input').forEach(i => i.value = '');
+        novaLinha.querySelector('.btn-remover').style.display = 'block';
+        
+        container.appendChild(novaLinha);
+        monitorarLinha(novaLinha);
+    });
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-remover');
+        if (btn) {
+            Swal.fire({
+                title: 'Remover Noticiado?',
+                text: "Os dados desta linha serão perdidos.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sim, remover'
+            }).then((result) => { 
+                if (result.isConfirmed) {
+                    btn.closest('.item-noticiado').remove(); 
+                }
+            });
+        }
+    });
+
+    // 4. SUBMIT E LIMPEZA (Ponto Crítico)
+    document.getElementById('formPrincipal').addEventListener('submit', function(e) {
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            Swal.fire({ title: 'Atenção', text: 'Preencha os campos obrigatórios (*)', icon: 'error' });
+            return;
+        }
+
+        // Antes de enviar ao Django, limpamos o peso
+        document.querySelectorAll('.mask-peso').forEach(input => {
+            const mask = mascarasAtivas.get(input);
+            if (mask) {
+                // Remove pontos de milhar, mantém a vírgula decimal
+                // O Django fará: float(valor.replace(',', '.'))
+                const valorLimpoParaPython = mask.value.replace(/\./g, '');
+                input.value = valorLimpoParaPython;
+            }
+        });
+        
+        atualizarBou();
+    });
+
+    // Mensagens de Erro/Sucesso vindas do Django
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({ 
+                title: 'Sistema informa:', 
+                text: "{{ message }}", 
+                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}" 
+            });
+        {% endfor %}
+    {% endif %}
+</script>
+
+<style>
+    .item-noticiado { border-left: 5px solid #198754 !important; transition: all 0.2s; }
+    .item-noticiado:hover { border-left-color: #0d6efd !important; border-color: #ddd; }
+    .form-control:focus, .form-select:focus { border-color: #198754; box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); }
+    .flatpickr-input[readonly] { background-color: #fff !important; }
+</style>
+{% endblock %}

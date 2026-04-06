@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relação de Carga - Incineração 6º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @page { 
+            size: A4 portrait; 
+            margin: 15mm; 
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .folha-a4 { border: none; margin: 0; padding: 0; width: 100%; }
+            .table-dark { background-color: #212529 !important; color: white !important; }
+        }
+        
+        body { background-color: #f8f9fa; font-family: sans-serif; }
+        .folha-a4 {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 10mm auto;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header-rep { border-bottom: 3px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+        .table-conferencia td { vertical-align: middle; padding: 4px 8px !important; }
+        .check-box { width: 30px; text-align: center; font-weight: bold; border: 1px solid #000 !important; }
+        .summary-box { border: 2px solid #000; background: #f9f9f9; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container no-print mt-3 text-center">
+    <button onclick="window.print()" class="btn btn-primary shadow-sm">
+        <i class="bi bi-printer"></i> IMPRIMIR RELAÇÃO DE CARGA
+    </button>
+    <a href="javascript:history.back()" class="btn btn-outline-secondary">VOLTAR</a>
+</div>
+
+<div class="folha-a4">
+    <div class="header-rep d-flex align-items-center">
+        <img src="{% static '/img/brasao_pmpr.svg' %}" style="height: 70px;" class="me-3">
+        <div class="text-center w-100">
+            <h6 class="mb-0 fw-bold">POLÍCIA MILITAR DO PARANÁ</h6>
+            <h6 class="mb-0">4º COMANDO REGIONAL - 6º BPM CASCAVEL</h6>
+            <p class="mb-0 small text-uppercase">Relação de Carga para Destruição por Incineração</p>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center my-3">
+        <span class="badge bg-dark">DOCID: {{ lote.identificador|default:"GERAL" }}</span>
+        <span class="small fw-bold">DATA: {{ data_atual|date:"d/m/Y - H:i" }}</span>
+    </div>
+
+    <table class="table table-bordered table-conferencia" style="font-size: 11px;">
+        <thead class="table-dark text-center">
+            <tr>
+                <th style="width: 5%;">CONF</th>
+                <th style="width: 15%;">BOU / ANO</th>
+                <th style="width: 15%;">LACRE Nº</th>
+                <th style="width: 20%;">SUBSTÂNCIA</th>
+                <th style="width: 15%;">PESO REAL</th>
+                <th style="width: 30%;">VARA / COMARCA</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td class="check-box">[ ]</td>
+                <td class="fw-bold text-center">{{ item.noticiado.ocorrencia.bou }}</td>
+                <td class="text-center">{{ item.numero_lacre }}</td>
+                <td>{{ item.get_substancia_display|upper }}</td>
+                <td class="text-center fw-bold">{{ item.peso_real }} {{ item.unidade|lower }}</td>
+                <td style="font-size: 10px;">{{ item.noticiado.ocorrencia.get_vara_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-4">Nenhum item listado para este transporte.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary-box">
+        <div class="row text-center">
+            <div class="col-4">
+                <small class="d-block text-muted">TOTAL DE VOLUMES</small>
+                <h5 class="fw-bold mb-0">{{ itens.count }}</h5>
+            </div>
+            <div class="col-4 border-start border-end border-dark">
+                <small class="d-block text-muted">PESO TOTAL ESTIMADO</small>
+                <h5 class="fw-bold mb-0 text-danger">
+                    {# Cálculo simples para exibição #}
+                    {{ total_peso|floatformat:3 }} KG
+                </h5>
+            </div>
+            <div class="col-4">
+                <small class="d-block text-muted">DESTINO</small>
+                <h5 class="fw-bold mb-0" style="font-size: 14px;">USINA LICENCIADA</h5>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 60px;">
+        <div class="row text-center g-4">
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">
+                    <p class="mb-0 fw-bold small">ENCARREGADO CUSTÓDIA</p>
+                    <p class="small text-muted">Responsável pela Carga</p>
+                </div>
+            </div>
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">
+                    <p class="mb-0 fw-bold small">COMISSÃO DE QUEIMA</p>
+                    <p class="small text-muted">Testemunha/Vistoria</p>
+                </div>
+            </div>
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; padding-top: 5px;">
+                    <p class="mb-0 fw-bold small">RESP. PELO TRANSPORTE</p>
+                    <p class="small text-muted">Recebi a Carga Intacta</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-5 small text-muted text-center" style="font-size: 9px;">
+        Documento gerado eletronicamente pelo Sistema de Gestão de Custódia - 6º BPM.<br>
+        A conferência física é obrigatória antes do lacre do veículo de transporte.
+    </div>
+</div>
+
+</body>
+</html>
