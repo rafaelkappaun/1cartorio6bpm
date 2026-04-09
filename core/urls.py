@@ -23,6 +23,9 @@ urlpatterns = [
     # API REST (DRF)
     path('api/', include('gestao.api_urls')),
     
+    # Relatórios Django (templates)
+    path('', include('gestao.urls')),
+    
     # Autenticação JWT
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

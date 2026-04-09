@@ -21,6 +21,14 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/relatorio': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/templates': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

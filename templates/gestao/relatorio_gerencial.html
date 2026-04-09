@@ -1,0 +1,413 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Gerencial - 6º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @page { size: A4 landscape; margin: 12mm; }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+            color: #1a1a1a;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        
+        .folha-a4 {
+            background: white;
+            padding: 0;
+            max-width: 297mm;
+            margin: 0 auto;
+        }
+        
+        /* CABEÇALHO OFICIAL */
+        .cabecalho-oficial {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 3px solid #1a3a2a;
+            margin-bottom: 12px;
+        }
+        
+        .logo-parana { height: 45px; width: auto; }
+        .logo-pmpr { height: 45px; width: auto; }
+        
+        .orgao-titulo { text-align: center; flex-grow: 1; }
+        .orgao-titulo h1 { font-size: 13px; font-weight: 700; color: #1a3a2a; margin: 0; text-transform: uppercase; }
+        .orgao-titulo h2 { font-size: 10px; font-weight: 600; color: #333; margin: 2px 0 0 0; }
+        .orgao-titulo p { font-size: 8px; color: #666; margin: 2px 0 0 0; }
+        
+        /* TÍTULO DO RELATÓRIO */
+        .titulo-relatorio {
+            background: linear-gradient(135deg, #1a3a2a 0%, #2d5a3f 100%);
+            color: white;
+            padding: 8px 15px;
+            margin: 0 -12mm 12px -12mm;
+            text-align: center;
+        }
+        .titulo-relatorio h3 { margin: 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+        .titulo-relatorio small { font-size: 9px; opacity: 0.9; }
+        
+        /* FILTROS */
+        .filtros-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 10px;
+            margin-bottom: 10px;
+            font-size: 9px;
+        }
+        .filtro-tag {
+            display: inline-block;
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            margin: 1px;
+        }
+        
+        /* CARDS DE RESUMO */
+        .resumo-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .resumo-card {
+            background: linear-gradient(135deg, #1a3a2a 0%, #2d5a3f 100%);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .resumo-card h4 { font-size: 18px; font-weight: 700; margin: 0; }
+        .resumo-card small { font-size: 8px; text-transform: uppercase; opacity: 0.9; }
+        .resumo-card.peso { background: linear-gradient(135deg, #0d6efd 0%, #3d8bfd 100%); }
+        .resumo-card.notificados { background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 100%); }
+        
+        /* SEÇÕES */
+        .sec-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1a3a2a;
+            text-transform: uppercase;
+            border-bottom: 2px solid #1a3a2a;
+            padding-bottom: 3px;
+            margin: 12px 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sec-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 14px;
+            background: #c5a059;
+        }
+        
+        /* TABELAS */
+        table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 10px; }
+        th, td { border: 1px solid #dee2e6; padding: 4px 6px; }
+        th { background: #1a3a2a; color: white; font-weight: 600; text-transform: uppercase; font-size: 8px; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+        .fw-bold { font-weight: 700; }
+        
+        /* TABELA DETALHADA (PARA INVENTÁRIO/NOTICIADOS) */
+        .tabela-detalhada th { background: #1a3a2a; }
+        .tabela-detalhada td { font-size: 8px; padding: 3px 4px; }
+        .tabela-detalhada .col-bou { width: 10%; }
+        .tabela-detalhada .col-processo { width: 12%; }
+        .tabela-detalhada .col-noticiado { width: 18%; }
+        .tabela-detalhada .col-vara { width: 12%; }
+        .tabela-detalhada .col-substancia { width: 15%; }
+        .tabela-detalhada .col-peso { width: 10%; }
+        .tabela-detalhada .col-status { width: 12%; }
+        .tabela-detalhada .col-data { width: 11%; }
+        
+        /* TABELA DE SUBSTÂNCIAS (SEM PORCENTAGEM) */
+        .tabela-substancia .col-substancia { width: 35%; }
+        .tabela-substancia .col-qtd { width: 20%; text-align: center; }
+        .tabela-substancia .col-peso { width: 25%; text-align: center; }
+        .tabela-substancia .col-unidade { width: 20%; text-align: center; }
+        
+        /* GRÁFICO SIMPLES */
+        .bar-chart { display: flex; flex-direction: column; gap: 4px; }
+        .bar-item { display: flex; align-items: center; gap: 6px; }
+        .bar-label { min-width: 80px; font-size: 9px; text-align: right; }
+        .bar-container { flex-grow: 1; height: 14px; background: #e9ecef; border-radius: 2px; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #1a3a2a 0%, #2d5a3f 100%); border-radius: 2px; }
+        .bar-value { min-width: 50px; font-size: 9px; font-weight: 600; text-align: right; }
+        
+        /* RANKING */
+        .ranking-item { display: flex; align-items: center; padding: 4px 0; border-bottom: 1px solid #eee; }
+        .ranking-pos { width: 22px; height: 22px; background: #1a3a2a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; margin-right: 8px; }
+        .ranking-pos.top3 { background: #c5a059; }
+        .ranking-info { flex-grow: 1; }
+        .ranking-nome { font-weight: 600; font-size: 10px; }
+        .ranking-detalhes { font-size: 8px; color: #666; }
+        .ranking-qtd { font-weight: 700; font-size: 12px; color: #1a3a2a; }
+        
+        /* ASSINATURA */
+        .assinatura-box { margin-top: 20px; padding-top: 10px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; }
+        .assinatura-item { text-align: center; width: 180px; }
+        .assinatura-linha { border-top: 1px solid #1a1a1a; margin-bottom: 3px; margin-top: 25px; }
+        .assinatura-nome { font-weight: 600; font-size: 10px; }
+        .assinatura-cargo { font-size: 8px; color: #666; }
+        
+        /* RODAPÉ */
+        .rodape { margin-top: 15px; padding-top: 8px; border-top: 1px solid #dee2e6; text-align: center; font-size: 8px; color: #666; }
+        
+        /* GRID */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card-section { border: 1px solid #dee2e6; border-radius: 4px; padding: 8px; }
+        .card-section h5 { font-size: 10px; font-weight: 700; color: #1a3a2a; margin: 0 0 6px 0; text-transform: uppercase; }
+        
+        /* TOTALIZADOR */
+        .totalizador { background: #1a3a2a; color: white; font-weight: 700; }
+        
+        @media print {
+            body { font-size: 9px; }
+            .folha-a4 { width: 100%; max-width: none; }
+            .no-print { display: none !important; }
+            .resumo-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="folha-a4">
+    <!-- CABEÇALHO OFICIAL -->
+    <div class="cabecalho-oficial">
+        <img src="{% static 'img/brasao_parana.svg' %}" alt="Estado do Paraná" class="logo-parana">
+        <div class="orgao-titulo">
+            <h1>POLÍCIA MILITAR DO PARANÁ</h1>
+            <h2>6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR</h2>
+            <p>Setor de Gestão de Custódia e Evidências</p>
+        </div>
+        <img src="{% static 'img/brasao_pmpr.svg' %}" alt="PMPR" class="logo-pmpr">
+    </div>
+    
+    <!-- TÍTULO -->
+    <div class="titulo-relatorio">
+        <h3>RELATÓRIO GERENCIAL DE MATERIAIS APREENDIDOS</h3>
+        <small>{% now "d/m/Y H:i" %} | {{ filtros.periodo|default:"Período acumulado" }}</small>
+    </div>
+    
+    <!-- FILTROS APLICADOS -->
+    {% if filtros %}
+    <div class="filtros-box">
+        <strong>Filtros:</strong>
+        {% for key, value in filtros.items %}
+            <span class="filtro-tag"><strong>{{ key }}:</strong> {{ value }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- CARDS DE RESUMO -->
+    <div class="resumo-cards">
+        <div class="resumo-card">
+            <h4>{{ resumo.total_materiais|default:"0" }}</h4>
+            <small>MATERIAIS</small>
+        </div>
+        <div class="resumo-card notificados">
+            <h4>{{ resumo.total_noticiados|default:"0" }}</h4>
+            <small>NOTICIADOS</small>
+        </div>
+        <div class="resumo-card">
+            <h4>{{ resumo.total_bous|default:"0" }}</h4>
+            <small>BOUs ÚNICOS</small>
+        </div>
+        <div class="resumo-card peso">
+            <h4>{{ resumo.peso_total_gramas|default:"0"|floatformat:0 }}g</h4>
+            <small>PESO TOTAL DROGAS</small>
+        </div>
+    </div>
+    
+    <!-- GRID DE SEÇÕES -->
+    <div class="grid-2">
+        <!-- POR CATEGORIA -->
+        <div class="card-section">
+            <h5>Por Categoria</h5>
+            {% if por_categoria %}
+            <div class="bar-chart">
+                {% for item in por_categoria %}
+                <div class="bar-item">
+                    <span class="bar-label">{{ item.label }}</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: {% widthratio item.total max_categoria 100 %}%"></div>
+                    </div>
+                    <span class="bar-value">{{ item.total }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center text-muted">Nenhum dado</p>
+            {% endif %}
+        </div>
+        
+        <!-- POR STATUS -->
+        <div class="card-section">
+            <h5>Por Status</h5>
+            {% if por_status %}
+            <div class="bar-chart">
+                {% for item in por_status %}
+                <div class="bar-item">
+                    <span class="bar-label">{{ item.label }}</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: {% widthratio item.total max_status 100 %}%"></div>
+                    </div>
+                    <span class="bar-value">{{ item.total }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center text-muted">Nenhum dado</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- SEÇÃO: POR SUBSTÂNCIA (SEM PORCENTAGEM) -->
+    <div class="sec-title">Por Substância (Entorpecentes)</div>
+    {% if por_substancia %}
+    <table class="tabela-substancia">
+        <thead>
+            <tr>
+                <th class="col-substancia">Substância</th>
+                <th class="col-qtd">Quantidade</th>
+                <th class="col-peso">Peso Total (g)</th>
+                <th class="col-unidade">Unidade</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in por_substancia %}
+            <tr>
+                <td class="fw-bold">{{ item.label }}</td>
+                <td class="text-center">{{ item.total }}</td>
+                <td class="text-center">{{ item.peso|floatformat:1 }}</td>
+                <td class="text-center">g</td>
+            </tr>
+            {% endfor %}
+            <tr class="totalizador">
+                <td><strong>TOTAL GERAL</strong></td>
+                <td class="text-center"><strong>{% widthratio resumo.total_materiais resumo.total_materiais 100|floatformat:0 %}</strong></td>
+                <td class="text-center"><strong>{{ resumo.peso_total_gramas|floatformat:1 }}</strong></td>
+                <td class="text-center"><strong>g</strong></td>
+            </tr>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-center text-muted">Nenhum entorpecente registrado no período</p>
+    {% endif %}
+    
+    <!-- SEÇÃO: POR NATUREZA PENAL -->
+    <div class="sec-title">Por Natureza Penal (Criminal)</div>
+    {% if por_natureza %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50%;">Natureza Penal</th>
+                <th style="width: 25%;" class="text-center">Ocorrências</th>
+                <th style="width: 25%;" class="text-center">Materiais</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in por_natureza %}
+            <tr>
+                <td>{{ item.natureza }}</td>
+                <td class="text-center fw-bold">{{ item.total }}</td>
+                <td class="text-center">{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-center text-muted">Nenhuma natureza penal registrada</p>
+    {% endif %}
+    
+    <!-- SEÇÃO: RANKING DE UNIDADES -->
+    <div class="sec-title">Ranking de Unidades que Mais Apreenderam</div>
+    {% if por_unidade %}
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        {% for item in por_unidade %}
+        <div class="ranking-item">
+            <div class="ranking-pos {% if forloop.counter <= 3 %}top3{% endif %}">{{ forloop.counter }}</div>
+            <div class="ranking-info">
+                <div class="ranking-nome">{{ item.unidade }}</div>
+                <div class="ranking-detalhes">{{ item.bous|default:item.total }} BOUs distintos</div>
+            </div>
+            <div class="ranking-qtd">{{ item.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center text-muted">Nenhum dado disponível</p>
+    {% endif %}
+    
+    <!-- SEÇÃO: POR MÊS -->
+    <div class="sec-title">Evolução Mensal</div>
+    {% if por_mes %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30%;">Mês</th>
+                <th style="width: 20%;" class="text-center">Quantidade</th>
+                <th style="width: 50%;">Distribuição</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in por_mes %}
+            <tr>
+                <td>{{ item.mes_label }}</td>
+                <td class="text-center fw-bold">{{ item.total }}</td>
+                <td>
+                    <div class="bar-container" style="height: 12px;">
+                        <div class="bar-fill" style="width: {% widthratio item.total max_mes 100 %}%"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <!-- ASSINATURA -->
+    <div class="assinatura-box">
+        <div class="assinatura-item">
+            <div class="assinatura-linha"></div>
+            <p class="assinatura-nome">Responsável pela Análise</p>
+            <p class="assinatura-cargo">Setor de Gestão de Custódia - 6º BPM</p>
+        </div>
+        <div class="assinatura-item">
+            <div class="assinatura-linha"></div>
+            <p class="assinatura-nome">{{ request.user.get_full_name|default:"Encarregado" }}</p>
+            <p class="assinatura-cargo">Cascavel/PR, {% now "d/m/Y" %}</p>
+        </div>
+    </div>
+    
+    <!-- RODAPÉ -->
+    <div class="rodape">
+        <p class="mb-0">Documento gerado pelo Sistema de Gestão de Custódia - 6º BPM Cascavel/PR | Informações sigilosas - Uso restrito</p>
+    </div>
+</div>
+
+<!-- BOTÃO DE IMPRESSÃO -->
+<div class="no-print text-center py-3">
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class="bi bi-printer"></i> IMPRIMIR RELATÓRIO
+    </button>
+    <a href="javascript:history.back()" class="btn btn-outline-secondary ms-2">Voltar</a>
+</div>
+
+</body>
+</html>

@@ -1,38 +1,33 @@
 import os
+import logging
 from io import BytesIO
 from django.conf import settings
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    Image, PageBreak, KeepTogether
+    PageBreak, KeepTogether
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import mm, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY, TA_RIGHT
-from reportlab.pdfgen import canvas
 from datetime import datetime
 from django.utils import timezone
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║               CONSTANTES E CORES INSTITUCIONAIS              ║
-# ╚═══════════════════════════════════════════════════════════════╝
+logger = logging.getLogger(__name__)
 
-VERDE_PMPR = colors.HexColor('#1a3a2a')
-DOURADO = colors.HexColor('#c5a059')
-CINZA_CLARO = colors.HexColor('#f8f9fa')
-CINZA_BORDA = colors.HexColor('#dee2e6')
-CINZA_TEXTO = colors.HexColor('#495057')
+PRETO = colors.black
 BRANCO = colors.white
+CINZA_CLARO = colors.Color(0.95, 0.95, 0.95)
+CINZA_MEDIO = colors.Color(0.85, 0.85, 0.85)
 
 LOGO_PARANA = os.path.join(settings.BASE_DIR, 'static_files', 'img', 'brasao_parana.svg')
 LOGO_PMPR = os.path.join(settings.BASE_DIR, 'static_files', 'img', 'brasao_pmpr.svg')
 
 
 def draw_svg(canvas_obj, path, x, y, width, height):
-    """Auxiliar para desenhar SVG no ReportLab usando svglib"""
     try:
         drawing = svg2rlg(path)
         if not drawing:
@@ -45,704 +40,776 @@ def draw_svg(canvas_obj, path, x, y, width, height):
         drawing.scale(scale, scale)
         renderPDF.draw(drawing, canvas_obj, x, y)
         return True
-    except Exception as e:
-        print(f"Erro ao desenhar SVG {path}: {e}")
+    except Exception:
         return False
 
 
-def _get_styles():
-    """Retorna estilos personalizados para todos os documentos"""
-    styles = getSampleStyleSheet()
-
-    styles.add(ParagraphStyle(
-        'DocTitle', parent=styles['Title'],
-        fontSize=14, fontName='Helvetica-Bold',
-        alignment=TA_CENTER, spaceAfter=4,
-        textColor=VERDE_PMPR
-    ))
-    styles.add(ParagraphStyle(
-        'DocSubtitle', parent=styles['Normal'],
-        fontSize=10, fontName='Helvetica-Bold',
-        alignment=TA_CENTER, spaceAfter=12,
-        textColor=CINZA_TEXTO
-    ))
-    styles.add(ParagraphStyle(
-        'CorpoJustificado', parent=styles['Normal'],
-        fontSize=10, leading=14, alignment=TA_JUSTIFY,
-        fontName='Helvetica', firstLineIndent=40,
-        spaceBefore=6, spaceAfter=6
-    ))
-    styles.add(ParagraphStyle(
-        'CorpoNormal', parent=styles['Normal'],
-        fontSize=9, leading=13, alignment=TA_LEFT,
-        fontName='Helvetica'
-    ))
-    styles.add(ParagraphStyle(
-        'SectionHeader', parent=styles['Normal'],
-        fontSize=10, fontName='Helvetica-Bold',
-        textColor=VERDE_PMPR, spaceBefore=14, spaceAfter=6,
-        borderPadding=4
-    ))
-    styles.add(ParagraphStyle(
-        'CenterBold', alignment=TA_CENTER,
-        fontSize=10, fontName='Helvetica-Bold'
-    ))
-    styles.add(ParagraphStyle(
-        'CenterSmall', alignment=TA_CENTER,
-        fontSize=8, fontName='Helvetica',
-        textColor=CINZA_TEXTO
-    ))
-    styles.add(ParagraphStyle(
-        'DireitaData', alignment=TA_RIGHT,
-        fontSize=9, fontName='Helvetica'
-    ))
-    styles.add(ParagraphStyle(
-        'Rodape', alignment=TA_CENTER,
-        fontSize=7, fontName='Helvetica-Oblique',
-        textColor=CINZA_TEXTO
-    ))
-    return styles
+def _estilos():
+    s = getSampleStyleSheet()
+    
+    s.add(ParagraphStyle('Titulo', fontSize=13, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, spaceAfter=4, textColor=PRETO))
+    s.add(ParagraphStyle('Subtitulo', fontSize=10, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, spaceAfter=8, textColor=PRETO))
+    s.add(ParagraphStyle('Corpo', fontSize=10, leading=13, fontName='Helvetica',
+        alignment=TA_JUSTIFY, spaceBefore=6, spaceAfter=6))
+    s.add(ParagraphStyle('CorpoLeft', fontSize=10, leading=13, fontName='Helvetica',
+        alignment=TA_LEFT))
+    s.add(ParagraphStyle('Centro', fontSize=10, fontName='Helvetica-Bold',
+        alignment=TA_CENTER))
+    s.add(ParagraphStyle('Direita', fontSize=10, fontName='Helvetica',
+        alignment=TA_RIGHT))
+    s.add(ParagraphStyle('Rodape', fontSize=8, fontName='Helvetica-Oblique',
+        alignment=TA_CENTER, textColor=colors.Color(0.4, 0.4, 0.4)))
+    s.add(ParagraphStyle('Assinatura', fontSize=9, fontName='Helvetica',
+        alignment=TA_CENTER))
+    return s
 
 
-def _draw_header(c, doc):
-    """Cabeçalho oficial com brasões do Paraná e da PMPR"""
-    c.saveState()
+def _cabecalho_oficio(c, doc, cidade="CASCAVEL"):
+    c.save()
     w, h = A4
-    margin = doc.leftMargin
-    logo_size = 48
-
-    # Brasões
-    draw_svg(c, LOGO_PARANA, margin, h - margin - logo_size + 5, logo_size, logo_size)
-    draw_svg(c, LOGO_PMPR, w - margin - logo_size, h - margin - logo_size + 5, logo_size, logo_size)
-
-    # Linha dourada superior
-    c.setStrokeColor(DOURADO)
-    c.setLineWidth(2)
-    c.line(margin, h - margin + 8, w - margin, h - margin + 8)
-
-    # Textos do cabeçalho
+    m = doc.leftMargin
+    
+    c.setStrokeColor(PRETO)
+    c.setLineWidth(0.5)
+    c.line(m, h - 45, w - m, h - 45)
+    
     cx = w / 2
-    y_start = h - margin - 8
-    c.setFillColor(VERDE_PMPR)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawCentredString(cx, y_start, "ESTADO DO PARANÁ")
     c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(cx, y_start - 14, "POLÍCIA MILITAR DO PARANÁ")
+    c.drawCentredString(cx, h - 25, "ESTADO DO PARANA")
     c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(cx, y_start - 27, "6º BATALHÃO DE POLÍCIA MILITAR")
-    c.setFillColor(CINZA_TEXTO)
+    c.drawCentredString(cx, h - 36, "POLICIA MILITAR DO PARANA")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(cx, h - 47, "6o BATALHAO DE POLICIA MILITAR")
     c.setFont("Helvetica", 8)
-    c.drawCentredString(cx, y_start - 39, "CARTÓRIO DE TERMOS CIRCUNSTANCIADOS — CASCAVEL/PR")
+    c.drawCentredString(cx, h - 57, f"CARTORIO DE TERMOS CIRCUNSTANCIADOS - {cidade}/PR")
+    
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(cx, 18, "6o BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
+    
+    c.restore()
 
-    # Linha divisória dupla
-    line_y = y_start - 50
-    c.setStrokeColor(VERDE_PMPR)
-    c.setLineWidth(1.5)
-    c.line(margin, line_y, w - margin, line_y)
-    c.setStrokeColor(DOURADO)
+
+def _cabecalho_landscape(c, doc):
+    c.saveState()
+    w, h = landscape(A4)
+    m = doc.leftMargin
+    
+    c.setStrokeColor(PRETO)
     c.setLineWidth(0.5)
-    c.line(margin, line_y - 3, w - margin, line_y - 3)
-
-    # Rodapé
-    c.setFillColor(CINZA_TEXTO)
-    c.setFont("Helvetica-Oblique", 7)
-    c.drawCentredString(cx, 22, "6º BPM — Rua Pernambuco, nº 1.711, Centro, Cascavel/PR — Fone: (45) 3321-6200")
-    c.setStrokeColor(CINZA_BORDA)
-    c.setLineWidth(0.5)
-    c.line(margin, 18, w - margin, 18)
-
+    c.line(m, h - 40, w - m, h - 40)
+    
+    cx = w / 2
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(cx, h - 22, "ESTADO DO PARANA - POLICIA MILITAR DO PARANA")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(cx, h - 32, "6o BATALHAO DE POLICIA MILITAR - CASCAVEL/PR")
+    
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(cx, 15, "6o BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
+    
     c.restoreState()
 
 
-def _info_box(data_pairs, styles, col_widths=None):
-    """Cria uma tabela-caixa com pares de dados"""
-    if col_widths is None:
-        col_widths = [4 * cm, 6 * cm, 4 * cm, 4 * cm]
-    rows = []
-    for i in range(0, len(data_pairs), 2):
+def _tabela_info(dados, estilos, cols=None):
+    if cols is None:
+        cols = [4*cm, 5*cm, 4*cm, 5*cm]
+    
+    linhas = []
+    for i in range(0, len(dados), 2):
         row = []
         for j in range(2):
             idx = i + j
-            if idx < len(data_pairs):
-                k, v = data_pairs[idx]
-                row.extend([
-                    Paragraph(f"<b>{k}:</b>", styles['CorpoNormal']),
-                    Paragraph(str(v or 'N/I'), styles['CorpoNormal'])
-                ])
+            if idx < len(dados):
+                k, v = dados[idx]
+                row.extend([Paragraph(f"<b>{k}:</b>", estilos['CorpoLeft']), Paragraph(str(v or '-'), estilos['CorpoLeft'])])
             else:
                 row.extend(['', ''])
-        rows.append(row)
-
-    t = Table(rows, colWidths=col_widths)
+        linhas.append(row)
+    
+    t = Table(linhas, colWidths=cols)
     t.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 0.5, CINZA_BORDA),
-        ('BACKGROUND', (0, 0), (0, -1), CINZA_CLARO),
-        ('BACKGROUND', (2, 0), (2, -1), CINZA_CLARO),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0,0), (-1,-1), 0.5, PRETO),
+        ('BACKGROUND', (0,0), (0,-1), CINZA_CLARO),
+        ('BACKGROUND', (2,0), (2,-1), CINZA_CLARO),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
     ]))
     return t
 
 
-def _tabela_materiais(materiais, styles, colunas='completa'):
-    """Gera uma tabela profissional de materiais"""
-    if colunas == 'incineracao':
-        header = ['Nº', 'BOU / PROJUDI', 'NOTICIADO', 'SUBSTÂNCIA', 'PESO', 'LACRE', 'LOTE']
-        widths = [0.8*cm, 3*cm, 3.5*cm, 3*cm, 2.2*cm, 2.5*cm, 2.5*cm]
-    elif colunas == 'remessa':
-        header = ['Nº', 'BOU', 'NOTICIADO', 'DESCRIÇÃO DO OBJETO', 'LACRE']
-        widths = [0.8*cm, 2.5*cm, 3.5*cm, 7*cm, 3.7*cm]
-    else:
-        header = ['Nº', 'BOU', 'PROCESSO', 'CATEGORIA', 'DESCRIÇÃO', 'LACRE', 'STATUS']
-        widths = [0.8*cm, 2.5*cm, 2.5*cm, 2.5*cm, 4.5*cm, 2.5*cm, 2.2*cm]
-
-    data_table = [header]
-    for idx, mat in enumerate(materiais):
-        oc = mat.noticiado.ocorrencia if mat.noticiado else None
+def _tabela_items(materiais, estilos, cols=None, col_headers=None):
+    if cols is None:
+        cols = [0.7*cm, 3*cm, 2.5*cm, 3*cm, 2*cm, 2.5*cm]
+    if col_headers is None:
+        col_headers = ['N', 'BOU', 'PROC', 'DESCRICAO', 'PESO', 'LACRE']
+    
+    dados = [col_headers]
+    for i, m in enumerate(materiais):
+        oc = m.noticiado.ocorrencia if m.noticiado else None
         bou = oc.bou if oc else '-'
-        proc = oc.processo if oc else '-'
-        noti = mat.noticiado.nome if mat.noticiado else '-'
-
-        if colunas == 'incineracao':
-            subst = mat.get_substancia_display() if mat.substancia else mat.get_categoria_display()
-            peso = mat.peso_formatado()
-            lacre = mat.numero_lacre or '-'
-            lote_id = mat.lote.identificador if mat.lote else '-'
-            row = [str(idx+1), f"{bou}\n{proc or ''}", noti[:25], subst, peso, lacre, lote_id]
-        elif colunas == 'remessa':
-            desc = mat.descricao_geral or mat.get_categoria_display()
-            lacre = mat.numero_lacre or 'SEM LACRE'
-            row = [str(idx+1), bou, noti[:25],
-                   Paragraph(desc[:80], styles['CorpoNormal']), lacre]
+        proc = oc.processo[:15] if oc and oc.processo else '-'
+        
+        if m.categoria == 'ENTORPECENTE':
+            desc = m.get_substancia_display() if m.substancia else 'Entorpecente'
+        elif m.categoria == 'DINHEIRO':
+            desc = f"R$ {m.valor_monetario}" if m.valor_monetario else 'Dinheiro'
         else:
-            cat = mat.get_categoria_display()
-            desc = mat.descricao_amigavel()[:35]
-            lacre = mat.numero_lacre or '-'
-            status = mat.get_status_display()[:25]
-            row = [str(idx+1), bou, proc or '-', cat[:15], desc, lacre, status[:20]]
-        data_table.append(row)
-
-    t = Table(data_table, colWidths=widths, repeatRows=1)
+            desc = (m.descricao_geral or m.get_categoria_display())[:30]
+        
+        peso = m.peso_formatado() if m.categoria == 'ENTORPECENTE' else '-'
+        lacre = m.numero_lacre or '-'
+        
+        dados.append([str(i+1), bou[:15], proc, desc[:25], peso, lacre[:15]])
+    
+    t = Table(dados, colWidths=cols, repeatRows=1)
     t.setStyle(TableStyle([
-        # Cabeçalho
-        ('BACKGROUND', (0, 0), (-1, 0), VERDE_PMPR),
-        ('TEXTCOLOR', (0, 0), (-1, 0), BRANCO),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 7),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        # Corpo
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.4, CINZA_BORDA),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        # Faixas alternadas
-        *[('BACKGROUND', (0, i), (-1, i), CINZA_CLARO)
-          for i in range(2, len(data_table), 2)],
+        ('BACKGROUND', (0,0), (-1,0), CINZA_CLARO),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('ALIGN', (0,0), (0,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('GRID', (0,0), (-1,-1), 0.5, PRETO),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
     ]))
     return t
 
 
-def _assinaturas(nomes_cargos, styles):
-    """Gera bloco de assinaturas 2 por linha"""
-    rows = []
-    for i in range(0, len(nomes_cargos), 2):
-        row = []
-        for j in range(2):
-            idx = i + j
-            if idx < len(nomes_cargos):
-                nome, cargo = nomes_cargos[idx]
-                cell = Paragraph(
-                    f"<br/><br/>________________________________________<br/>"
-                    f"<b>{nome}</b><br/>{cargo}",
-                    styles['CenterSmall']
-                )
-            else:
-                cell = ''
-            row.append(cell)
-        rows.append(row)
-
-    t = Table(rows, colWidths=[8.5*cm, 8.5*cm])
+def _tabela_items_landscape(materiais, estilos, cols=None, col_headers=None):
+    if cols is None:
+        cols = [0.7*cm, 2.5*cm, 2*cm, 3*cm, 2.5*cm, 1.5*cm, 1.5*cm, 3.5*cm, 2*cm]
+    if col_headers is None:
+        col_headers = ['N', 'BOU', 'PROC', 'NOTICIADO', 'SUBST/DESC', 'PESO', 'UN', 'OBS', 'LACRE']
+    
+    dados = [col_headers]
+    for i, m in enumerate(materiais):
+        oc = m.noticiado.ocorrencia if m.noticiado else None
+        bou = oc.bou if oc else '-'
+        proc = oc.processo[:12] if oc and oc.processo else '-'
+        noti = (m.noticiado.nome or '-')[:20]
+        
+        if m.categoria == 'ENTORPECENTE':
+            desc = m.get_substancia_display() if m.substancia else 'Entorpecente'
+        elif m.categoria == 'DINHEIRO':
+            desc = f"R$ {m.valor_monetario}" if m.valor_monetario else 'Dinheiro'
+        else:
+            desc = (m.descricao_geral or m.get_categoria_display())[:25]
+        
+        peso = str(m.peso_real or m.peso_estimado or '-')
+        un = m.unidade or '-'
+        obs = (m.observacao_material or '-')[:25]
+        lacre = m.numero_lacre or '-'
+        
+        dados.append([str(i+1), bou[:12], proc, noti, desc[:20], peso[:8], un[:3], obs[:20], lacre[:12]])
+    
+    t = Table(dados, colWidths=cols, repeatRows=1)
     t.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+        ('BACKGROUND', (0,0), (-1,0), CINZA_CLARO),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 7),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('ALIGN', (0,0), (0,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('GRID', (0,0), (-1,-1), 0.5, PRETO),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
     ]))
     return t
 
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║          1. RECIBO DE ENTRADA (Policial → Cartório)          ║
-# ╚═══════════════════════════════════════════════════════════════╝
+def _bloco_assinaturas(linhas, estilos, largura=17*cm):
+    cells = []
+    for nome, cargo in linhas:
+        cells.append(Paragraph(
+            f"<br/><br/>________________________________<br/>"
+            f"<b>{nome}</b><br/>{cargo}",
+            estilos['Assinatura']
+        ))
+    
+    rows = [cells[i:i+2] for i in range(0, len(cells), 2)]
+    
+    t = Table(rows, colWidths=[largura/2, largura/2])
+    t.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+    ]))
+    return t
 
+
+# ====================== RECIBO DE ENTRADA ======================
 def gerar_recibo_entrada_pdf(ocorrencia):
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"recibo_entrada_{ocorrencia.bou.replace('/','_')}_{timestamp}.pdf"
+    ts = timezone.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"recibo_entrada_{ocorrencia.bou.replace('/','_')}_{ts}.pdf"
     pasta = os.path.join(settings.MEDIA_ROOT, 'recibos', 'entrada')
     os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, filename)
+    caminho = os.path.join(pasta, fname)
 
-    styles = _get_styles()
-    doc = SimpleDocTemplate(caminho, pagesize=A4,
-                            leftMargin=1.8*cm, rightMargin=1.8*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
 
-    # Título
-    Story.append(Paragraph("RECIBO DE DEPÓSITO DE MATERIAIS APREENDIDOS", styles['DocTitle']))
-    Story.append(Paragraph(f"Nº {ocorrencia.id}/{datetime.now().year}", styles['DocSubtitle']))
-    Story.append(Spacer(1, 8))
+    st.append(Paragraph("RECIBO DE DEPOSITO DE MATERIAIS APREENDIDOS", est['Titulo']))
+    st.append(Paragraph(f"No. {ocorrencia.id}/{datetime.now().year}", est['Subtitulo']))
+    st.append(Spacer(1, 10))
 
-    # Info box
     und = ocorrencia.unidade_especifica if ocorrencia.unidade_origem == 'OUTRA' else ocorrencia.get_unidade_origem_display()
-    info = [
+    dados = [
         ('BOU', ocorrencia.bou),
-        ('PROJUDI', ocorrencia.processo or 'Não informado'),
+        ('PROJUDI', ocorrencia.processo or 'Nao informado'),
         ('VARA', ocorrencia.get_vara_display()),
         ('UNIDADE', und),
-        ('NATUREZA', ocorrencia.natureza_penal or 'N/I'),
-        ('DATA DO FATO', ocorrencia.data_registro_bou.strftime('%d/%m/%Y') if ocorrencia.data_registro_bou else 'N/I'),
+        ('NATUREZA', ocorrencia.natureza_penal or '-'),
+        ('DATA FATO', ocorrencia.data_registro_bou.strftime('%d/%m/%Y') if ocorrencia.data_registro_bou else '-'),
     ]
-    Story.append(_info_box(info, styles))
-    Story.append(Spacer(1, 12))
+    st.append(_tabela_info(dados, est))
+    st.append(Spacer(1, 12))
 
-    # Texto legal
     pol = f"{ocorrencia.policial_graduacao or ''} {ocorrencia.policial_nome or ''}".strip()
     rg = ocorrencia.rg_policial or ''
-    texto = (
-        f"Certifico para os devidos fins que, na data de hoje, recebi do(a) "
-        f"<b>{pol}</b>, RG <b>{rg}</b>, pertencente à unidade <b>{und}</b>, "
-        f"a custódia dos materiais abaixo discriminados. "
-        f"Os itens foram conferidos quanto à integridade e lacração, sendo "
-        f"destinados conforme a natureza de cada material: entorpecentes para "
-        f"armazenamento em cofre e posterior incineração (Lei 11.343/06); "
-        f"demais objetos para encaminhamento ao Judiciário (Lei 9.099/95)."
-    )
-    Story.append(Paragraph(texto, styles['CorpoJustificado']))
-    Story.append(Spacer(1, 10))
-
-    # Seção: Itens
-    Story.append(Paragraph("▸ RELAÇÃO DE MATERIAIS RECEBIDOS", styles['SectionHeader']))
-
-    # Monta lista de todos os materiais
-    all_mats = []
-    for noti in ocorrencia.noticiados.all():
-        for mat in noti.materiais.all():
-            all_mats.append(mat)
-
-    if all_mats:
-        header = ['Nº', 'NOTICIADO', 'CATEGORIA', 'DESCRIÇÃO', 'PESO EST.', 'LACRE']
-        widths = [0.8*cm, 3*cm, 2.5*cm, 4.5*cm, 2.5*cm, 3.5*cm]
-        data_t = [header]
-        for i, mat in enumerate(all_mats):
-            noti_nome = mat.noticiado.nome[:20] if mat.noticiado else '-'
-            cat = mat.get_categoria_display()
-            if mat.categoria == 'ENTORPECENTE':
-                desc = mat.get_substancia_display() if mat.substancia else 'Entorpecente'
-            elif mat.categoria == 'DINHEIRO':
-                desc = f"R$ {mat.valor_monetario}" if mat.valor_monetario else 'Dinheiro'
-            else:
-                desc = (mat.descricao_geral or cat)[:35]
-            peso = mat.peso_formatado() if mat.categoria == 'ENTORPECENTE' else '-'
-            lacre = mat.numero_lacre or 'SEM LACRE'
-            data_t.append([str(i+1), noti_nome, cat[:15], desc, peso, lacre])
-
-        t = Table(data_t, colWidths=widths, repeatRows=1)
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), VERDE_PMPR),
-            ('TEXTCOLOR', (0,0), (-1,0), BRANCO),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,-1), 8),
-            ('ALIGN', (0,0), (-1,0), 'CENTER'),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('GRID', (0,0), (-1,-1), 0.4, CINZA_BORDA),
-            ('TOPPADDING', (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-            *[('BACKGROUND', (0,i), (-1,i), CINZA_CLARO) for i in range(2, len(data_t), 2)],
-        ]))
-        Story.append(t)
-
-    Story.append(Spacer(1, 6))
-    Story.append(Paragraph(
-        "* O peso real definitivo será aferido em balança de precisão durante a conferência física.",
-        styles['Rodape']
+    
+    st.append(Paragraph(
+        f"Certifico que recebi do(a) <b>{pol}</b>, RG <b>{rg}</b>, da unidade <b>{und}</b>, "
+        f"a custodia dos materiais discriminados abaixo, ficando responsavel pela integridade dos mesmos conforme "
+        f"Lei 11.343/06 (entorpecentes) e Lei 9.099/95 (demais objetos).",
+        est['Corpo']
     ))
-    Story.append(Spacer(1, 20))
+    st.append(Spacer(1, 10))
 
-    # Assinaturas
-    cartorario = ocorrencia.criado_por
-    nome_cart = cartorario.get_full_name().upper() if cartorario and cartorario.get_full_name() else "ESCRIVÃO(Ã)"
-    Story.append(_assinaturas([
-        (f"{pol}".upper(), f"RG: {rg} — Responsável pela Entrega"),
-        (nome_cart, "6º BPM — Recebedor / Cartorário"),
-    ], styles))
+    st.append(Paragraph("MATERIAIS RECEBIDOS", est['Centro']))
+    st.append(Spacer(1, 6))
 
-    Story.append(Spacer(1, 10))
-    data_ext = timezone.now().strftime('%d de %B de %Y às %H:%M')
-    Story.append(Paragraph(f"Cascavel/PR, {data_ext}.", styles['DireitaData']))
+    mats = []
+    for n in ocorrencia.noticiados.all():
+        mats.extend(list(n.materiais.all()))
+    
+    if mats:
+        st.append(_tabela_items(mats, est, 
+            cols=[0.7*cm, 3*cm, 2.5*cm, 5*cm, 2*cm, 3.5*cm],
+            col_headers=['N', 'NOTICIADO', 'CATEGORIA', 'DESCRICAO', 'PESO', 'LACRE']))
+    
+    st.append(Spacer(1, 6))
+    st.append(Paragraph("* Peso real sera aferido na conferencia fisica.", est['Rodape']))
+    st.append(Spacer(1, 20))
 
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    return os.path.join('recibos', 'entrada', filename).replace("\\", "/")
-
-
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║       2. OFÍCIO DE REMESSA (Materiais Gerais → Fórum)        ║
-# ╚═══════════════════════════════════════════════════════════════╝
-
-def gerar_oficio_materiais_gerais(materiais, usuario):
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"oficio_remessa_{timestamp}.pdf"
-    pasta = os.path.join(settings.MEDIA_ROOT, 'oficios')
-    os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, filename)
-
-    styles = _get_styles()
-    doc = SimpleDocTemplate(caminho, pagesize=A4,
-                            leftMargin=1.8*cm, rightMargin=1.8*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
-
-    # Identificar a(s) vara(s)
-    varas = set()
-    for mat in materiais:
-        if mat.noticiado and mat.noticiado.ocorrencia:
-            varas.add(mat.noticiado.ocorrencia.get_vara_display())
-    vara_str = ", ".join(varas) if varas else "Vara Criminal Competente"
-
-    oficio_id = f"{timezone.now().year}/{timestamp[-4:]}"
-
-    Story.append(Paragraph(f"<b>OFÍCIO Nº {oficio_id} — CARTÓRIO DO 6º BPM</b>", styles['DocTitle']))
-    Story.append(Spacer(1, 6))
+    cart = ocorrencia.criado_por
+    nome_cart = cart.get_full_name().upper() if cart and cart.get_full_name() else "ESCRIVAO(A)"
+    st.append(_bloco_assinaturas([
+        (f"{pol}".upper(), f"RG: {rg} - Responsavel pela Entrega"),
+        (nome_cart, "6o BPM - Recebedor / Cartorio"),
+    ], est))
+    st.append(Spacer(1, 15))
 
     data_ext = timezone.now().strftime('%d de %B de %Y')
-    Story.append(Paragraph(f"Cascavel/PR, {data_ext}.", styles['DireitaData']))
-    Story.append(Spacer(1, 15))
+    st.append(Paragraph(f"Cascavel/PR, {data_ext}.", est['Direita']))
 
-    Story.append(Paragraph(f"<b>À(Ao)</b> Excelentíssimo(a) Senhor(a) Juiz(a) de Direito", styles['CorpoNormal']))
-    Story.append(Paragraph(f"<b>{vara_str}</b>", styles['CorpoNormal']))
-    Story.append(Paragraph("Comarca de Cascavel/PR", styles['CorpoNormal']))
-    Story.append(Spacer(1, 12))
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    return os.path.join('recibos', 'entrada', fname).replace("\\", "/")
 
-    Story.append(Paragraph(
-        "<b>ASSUNTO:</b> Encaminhamento de materiais apreendidos em Boletim de Ocorrência Unificado",
-        styles['CorpoNormal']
+
+# ====================== RECIBO UNICO ======================
+def gerar_recibo_entrega_unico(material, usuario=None, tipo='ENTREGA'):
+    ts = timezone.now().strftime('%Y%m%d%H%M%S')
+    fname = f"recibo_{tipo.lower()}_{material.id}_{ts}.pdf"
+    pasta = os.path.join(settings.MEDIA_ROOT, 'recibos', 'entrega_unica')
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, fname)
+
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
+
+    oc = material.noticiado.ocorrencia if material.noticiado else None
+
+    st.append(Paragraph(f"RECIBO DE {tipo}", est['Titulo']))
+    st.append(Paragraph(f"No. {material.id}/{datetime.now().year}", est['Subtitulo']))
+    st.append(Spacer(1, 10))
+
+    dados = []
+    if oc:
+        dados.extend([
+            ('BOU', oc.bou),
+            ('PROJUDI', oc.processo or '-'),
+            ('VARA', oc.get_vara_display()),
+            ('DATA BOU', oc.data_registro_bou.strftime('%d/%m/%Y') if oc.data_registro_bou else '-'),
+        ])
+    dados.extend([
+        ('DATA EMISSAO', timezone.now().strftime('%d/%m/%Y')),
+        ('HORA', timezone.now().strftime('%H:%M')),
+    ])
+    st.append(_tabela_info(dados, est))
+    st.append(Spacer(1, 12))
+
+    cat = material.get_categoria_display()
+    desc = material.get_substancia_display() if material.categoria == 'ENTORPECENTE' and material.substancia else (material.descricao_geral or cat)
+
+    dados_mat = [
+        ('CATEGORIA', cat),
+        ('DESCRICAO', desc),
+        ('N. LACRE', material.numero_lacre or 'Sem lacre'),
+        ('PESO EST.', material.peso_formatado() if material.categoria == 'ENTORPECENTE' else '-'),
+        ('STATUS', material.get_status_display()),
+    ]
+    if material.lote:
+        dados_mat.append(('LOTE', material.lote.identificador))
+    st.append(Paragraph("DADOS DO MATERIAL", est['Centro']))
+    st.append(Spacer(1, 4))
+    st.append(_tabela_info(dados_mat, est))
+    st.append(Spacer(1, 12))
+
+    if material.noticiado:
+        st.append(Paragraph("NOTICIADO/PROPRIETARIO", est['Centro']))
+        st.append(Spacer(1, 4))
+        st.append(_tabela_info([('NOME', material.noticiado.nome), ('DEP. FIEL', 'Sim' if material.noticiado.depositario_fiel else 'Nao')], est))
+        st.append(Spacer(1, 12))
+
+    st.append(Paragraph(
+        "Declaro estar ciente de que sou responsavel pelo material acima, comprometendo-me a mantelo "
+        "em condicoes adequadas de custodia, conforme Lei 11.343/2006 e demais aplicaveis.",
+        est['Corpo']
     ))
-    Story.append(Spacer(1, 15))
+    st.append(Spacer(1, 25))
 
-    Story.append(Paragraph("Excelentíssimo(a) Senhor(a) Juiz(a),", styles['CorpoNormal']))
-    Story.append(Spacer(1, 8))
+    st.append(_bloco_assinaturas([
+        ("", "Responsavel pela Entrega / Nome, Assinatura e RG"),
+        ("", f"6o BPM - Recebedor / Nome, Assinatura e Matricula"),
+    ], est))
+    st.append(Spacer(1, 15))
 
-    corpo = (
-        "Pelo presente ofício, o 6º Batalhão de Polícia Militar de Cascavel/PR "
-        "encaminha a Vossa Excelência os materiais abaixo discriminados, devidamente "
-        "apreendidos em ocorrências policiais e vinculados aos respectivos Termos "
-        "Circunstanciados, conforme rito processual da Lei 9.099/95, para as "
-        "providências que Vossa Excelência entender cabíveis."
-    )
-    Story.append(Paragraph(corpo, styles['CorpoJustificado']))
-    Story.append(Spacer(1, 12))
+    st.append(Paragraph(f"Cascavel/PR, {timezone.now().strftime('%d de %B de %Y')}.", est['Direita']))
+    st.append(Spacer(1, 10))
+    st.append(Paragraph("Documento gerado pelo Sistema do 6o BPM Cascavel.", est['Rodape']))
 
-    Story.append(Paragraph("▸ RELAÇÃO DE MATERIAIS ENCAMINHADOS", styles['SectionHeader']))
-    Story.append(_tabela_materiais(materiais, styles, colunas='remessa'))
-    Story.append(Spacer(1, 15))
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    return os.path.join('recibos', 'entrega_unica', fname).replace("\\", "/")
 
-    Story.append(Paragraph(
-        "Solicita-se, após o recebimento, a gentileza de devolver a segunda via "
-        "deste ofício devidamente assinada e carimbada, servindo como recibo de entrega.",
-        styles['CorpoJustificado']
+
+# ====================== OFICIO DE REMESSA ======================
+def gerar_oficio_materiais_gerais(materiais, usuario):
+    ts = timezone.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"oficio_remessa_{ts}.pdf"
+    pasta = os.path.join(settings.MEDIA_ROOT, 'oficios')
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, fname)
+
+    varas = set()
+    for m in materiais:
+        if m.noticiado and m.noticiado.ocorrencia:
+            varas.add(m.noticiado.ocorrencia.get_vara_display())
+    vara_str = ", ".join(varas) or "Vara Criminal Competente"
+
+    ofc_id = f"{timezone.now().year}/{ts[-4:]}"
+
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
+
+    st.append(Paragraph(f"<b>OFICIO No {ofc_id} - CARTORIO DO 6o BPM</b>", est['Titulo']))
+    st.append(Spacer(1, 6))
+    st.append(Paragraph(f"Cascavel/PR, {timezone.now().strftime('%d de %B de %Y')}.", est['Direita']))
+    st.append(Spacer(1, 15))
+
+    st.append(Paragraph("A(o) Excelentissimo(a) Senhor(a) Juiz(a) de Direito", est['CorpoLeft']))
+    st.append(Paragraph(f"<b>{vara_str}</b>", est['CorpoLeft']))
+    st.append(Paragraph("Comarca de Cascavel/PR", est['CorpoLeft']))
+    st.append(Spacer(1, 10))
+
+    st.append(Paragraph("<b>ASSUNTO:</b> Encaminhamento de materiais apreendidos - Termos Circunstanciados", est['CorpoLeft']))
+    st.append(Spacer(1, 12))
+
+    st.append(Paragraph("Excelentissimo(a) Senhor(a) Juiz(a),", est['CorpoLeft']))
+    st.append(Spacer(1, 6))
+    st.append(Paragraph(
+        "O 6o Batalhao de Policia Militar de Cascavel/PR encaminha a Vossa Excelencia os materiais "
+        "abaixo discriminados, apreendidos em ocorrencias policiais e vinculados aos respectivos "
+        "Termos Circunstanciados, conforme Lei 9.099/95, para as providencias cabiveis.",
+        est['Corpo']
     ))
-    Story.append(Spacer(1, 8))
-    Story.append(Paragraph("Respeitosamente,", styles['CenterBold']))
-    Story.append(Spacer(1, 8))
+    st.append(Spacer(1, 10))
 
-    nome_user = usuario.get_full_name().upper() if usuario and usuario.get_full_name() else "ESCRIVÃO(Ã)"
-    Story.append(_assinaturas([
-        (nome_user, "Encarregado do Cartório\n6º Batalhão de Polícia Militar"),
-        ("", "Recebido pelo Fórum\n(assinatura e carimbo)"),
-    ], styles))
+    st.append(Paragraph("RELACAO DE MATERIAIS ENCAMINHADOS", est['Centro']))
+    st.append(Spacer(1, 6))
+    st.append(_tabela_items(materiais, est,
+        cols=[0.7*cm, 2.5*cm, 3*cm, 5.5*cm, 3*cm],
+        col_headers=['N', 'BOU', 'NOTICIADO', 'DESCRICAO DO OBJETO', 'LACRE']))
+    st.append(Spacer(1, 12))
 
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    return os.path.join('oficios', filename).replace("\\", "/")
+    st.append(Paragraph(
+        "Solicita-se a devolucao da segunda via deste oficio devidamente assinada e carimbada, "
+        "servindo como recibo de entrega.",
+        est['Corpo']
+    ))
+    st.append(Spacer(1, 8))
+    st.append(Paragraph("Respeitosamente,", est['Centro']))
+    st.append(Spacer(1, 8))
+
+    nome_user = usuario.get_full_name().upper() if usuario and usuario.get_full_name() else "ESCRIVAO(A)"
+    st.append(_bloco_assinaturas([
+        (nome_user, "Encarregado do Cartorio - 6o Batalhao de Policia Militar"),
+        ("", "Recebido pelo Forum (assinatura e carimbo)"),
+    ], est))
+
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    return os.path.join('oficios', fname).replace("\\", "/")
 
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║        3. CAPA DO LOTE (Etiqueta da Caixa Física)            ║
-# ╚═══════════════════════════════════════════════════════════════╝
-
+# ====================== CAPA DO LOTE ======================
 def gerar_capa_lote_pdf(lote, usuario=None):
-    from .models import Material
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"capa_lote_{lote.identificador}_{timestamp}.pdf"
+    ts = timezone.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"capa_lote_{lote.identificador}_{ts}.pdf"
     pasta = os.path.join(settings.MEDIA_ROOT, 'lotes', 'capas')
     os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, filename)
+    caminho = os.path.join(pasta, fname)
 
-    styles = _get_styles()
-    doc = SimpleDocTemplate(caminho, pagesize=A4,
-                            leftMargin=1.8*cm, rightMargin=1.8*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
+    mats = list(lote.materiais.all().select_related('noticiado__ocorrencia'))
+    total_peso = sum(float(m.peso_real or m.peso_estimado or 0) for m in mats)
 
-    materiais = lote.materiais.all().select_related('noticiado__ocorrencia')
-    total_itens = materiais.count()
-    total_peso = sum([float(m.peso_real or m.peso_estimado or 0) for m in materiais])
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
 
-    Story.append(Paragraph("TERMO DE DESTRUIÇÃO DE ENTORPECENTES", styles['DocTitle']))
-    Story.append(Paragraph(f"LOTE {lote.identificador}", styles['DocSubtitle']))
-    Story.append(Spacer(1, 10))
+    st.append(Paragraph("TERMO DE DESTRUICAO DE ENTORPECENTES", est['Titulo']))
+    st.append(Paragraph(f"LOTE {lote.identificador}", est['Subtitulo']))
+    st.append(Spacer(1, 10))
 
-    # Info do lote
-    info = [
+    dados = [
         ('IDENTIFICADOR', lote.identificador),
         ('STATUS', lote.get_status_display()),
-        ('DATA DE FORMAÇÃO', lote.data_criacao.strftime('%d/%m/%Y %H:%M')),
-        ('TOTAL DE ITENS', str(total_itens)),
-        ('PROCESSOS/BOUs', str(lote.processos_count)),
-        ('PESO ESTIMADO', f"{total_peso/1000:.3f} kg" if total_peso >= 1000 else f"{total_peso:.1f} g"),
+        ('DATA FORMACAO', lote.data_criacao.strftime('%d/%m/%Y %H:%M')),
+        ('TOTAL ITENS', str(len(mats))),
+        ('PROCESSOS', str(lote.processos_count)),
+        ('PESO TOTAL', f"{total_peso/1000:.3f} kg" if total_peso >= 1000 else f"{total_peso:.1f} g"),
     ]
-    Story.append(_info_box(info, styles))
-    Story.append(Spacer(1, 12))
+    st.append(_tabela_info(dados, est))
+    st.append(Spacer(1, 12))
 
-    # Tabela de itens
-    Story.append(Paragraph("▸ RELAÇÃO DE MATERIAIS NO LOTE", styles['SectionHeader']))
-    Story.append(_tabela_materiais(materiais, styles, colunas='incineracao'))
-    Story.append(Spacer(1, 20))
+    st.append(Paragraph("RELACAO DE MATERIAIS", est['Centro']))
+    st.append(Spacer(1, 6))
+    st.append(_tabela_items(mats, est,
+        cols=[0.7*cm, 2.5*cm, 2*cm, 3.5*cm, 2*cm, 2.5*cm, 3*cm],
+        col_headers=['N', 'BOU', 'PROC', 'NOTICIADO', 'PESO', 'LACRE', 'SUBSTANCIA']))
+    st.append(Spacer(1, 20))
 
-    # Assinaturas
-    Story.append(Paragraph("▸ ASSINATURAS OBRIGATÓRIAS (Art. 50, §5º, Lei 11.343/06)", styles['SectionHeader']))
-    Story.append(_assinaturas([
-        ("", "Oficial PM Responsável\nPosto/Graduação e Nome"),
-        ("", "Representante Vigilância Sanitária\nNome e CRF"),
-        ("", "Promotor(a) de Justiça\nNome e Matrícula"),
-        ("", "Testemunha\nNome e CPF"),
-    ], styles))
+    st.append(Paragraph("ASSINATURAS OBRIGATORIAS (Art. 50, Paragrafo 5o, Lei 11.343/06)", est['Centro']))
+    st.append(Spacer(1, 8))
+    st.append(_bloco_assinaturas([
+        ("", "Oficial PM Responsavel - Posto/Graduacao e Nome"),
+        ("", "Representante Vigilancia Sanitaria - Nome e CRF"),
+        ("", "Promotor(a) de Justica - Nome e Matricula"),
+        ("", "Testemunha - Nome e CPF"),
+    ], est))
 
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    return os.path.join('lotes', 'capas', filename).replace("\\", "/")
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    return os.path.join('lotes', 'capas', fname).replace("\\", "/")
 
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║   4. CERTIDÃO DE INCINERAÇÃO (Coletiva, agrupada por Vara)   ║
-# ╚═══════════════════════════════════════════════════════════════╝
-
-def gerar_certidao_incineracao_coletiva(lotes, usuario):
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"certidao_coletiva_{timestamp}.pdf"
+# ====================== CERTIDAO DE INCINERACAO ANTECIPADA ======================
+def gerar_certidao_incineracao_antecipada(lotes, usuario):
+    """Gera certidão ANTES da incineração para ser levada ao fórum/MP para assinatura"""
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"certidao_antecipada_{ts}.pdf"
     pasta = os.path.join(settings.MEDIA_ROOT, 'incineracao')
     os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, filename)
+    caminho = os.path.join(pasta, fname)
 
-    styles = _get_styles()
-    doc = SimpleDocTemplate(caminho, pagesize=A4,
-                            leftMargin=1.8*cm, rightMargin=1.8*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
 
-    Story.append(Paragraph("CERTIDÃO COLETIVA DE INCINERAÇÃO E DESTRUIÇÃO", styles['DocTitle']))
-    Story.append(Paragraph("DE SUBSTÂNCIAS ENTORPECENTES", styles['DocSubtitle']))
-    Story.append(Spacer(1, 8))
+    st.append(Paragraph("CERTIDAO DE DESTRUICAO DE SUBSTANCIAS ENTORPECENTES", est['Titulo']))
+    st.append(Paragraph("DOCUMENTO PARA ASSINATURA ANTECIPADA", est['Subtitulo']))
+    st.append(Spacer(1, 8))
 
-    lotes_str = ", ".join([l.identificador for l in lotes])
-    txt = (
-        f"Pelo presente termo solene, o 6º Batalhão de Polícia Militar de Cascavel/PR "
-        f"certifica que, em conformidade com as autorizações judiciais expedidas pelas "
-        f"respectivas Varas Criminais e em observância às normas sanitárias vigentes, "
-        f"procederá à destruição térmica (incineração) do material entorpecente "
-        f"custodiado nesta Unidade Militar, acondicionado nos lotes: <b>{lotes_str}</b>."
-    )
-    Story.append(Paragraph(txt, styles['CorpoJustificado']))
-    Story.append(Spacer(1, 10))
-
-    # Agrupa por Vara
+    lotes_list = list(lotes)
+    
     all_mats = []
-    for lote in lotes:
-        all_mats.extend(list(lote.materiais.all().select_related('noticiado__ocorrencia', 'lote')))
+    for lote in lotes_list:
+        mats = list(lote.materiais.filter(categoria='ENTORPECENTE').select_related('noticiado__ocorrencia'))
+        all_mats.extend(mats)
+    
+    lotes_str = ", ".join([l.identificador for l in lotes_list])
+    
+    processos_unicos = set()
+    for m in all_mats:
+        if m.noticiado and m.noticiado.ocorrencia:
+            proc = m.noticiado.ocorrencia.processo or m.noticiado.ocorrencia.bou
+            processos_unicos.add(proc)
+    
+    total_peso = sum(float(m.peso_real or m.peso_estimado or 0) for m in all_mats)
 
     por_vara = {}
-    for mat in all_mats:
-        oc = mat.noticiado.ocorrencia if mat.noticiado else None
-        vara_nome = oc.get_vara_display() if oc else "SEM VARA DEFINIDA"
-        por_vara.setdefault(vara_nome, []).append(mat)
+    for m in all_mats:
+        if m.noticiado and m.noticiado.ocorrencia:
+            vn = m.noticiado.ocorrencia.get_vara_display()
+            por_vara.setdefault(vn, []).append(m)
 
-    for vara, mats in por_vara.items():
-        Story.append(Paragraph(f"▸ {vara.upper()}", styles['SectionHeader']))
-        Story.append(_tabela_materiais(mats, styles, colunas='incineracao'))
-        Story.append(Spacer(1, 8))
+    st.append(Paragraph(
+        f"O 6o Batalhao de Policia Militar de Cascavel/PR vem respeitosamente requerer a "
+        f"destruicao termica (incineracao) das substancias entorpecentes relacionadas abaixo, "
+        f"em conformidade com o Art. 50, paragrafo 5o, da Lei 11.343/2006.",
+        est['Corpo']
+    ))
+    st.append(Spacer(1, 8))
 
-    Story.append(Spacer(1, 12))
-    data_ext = datetime.now().strftime('%d de %B de %Y')
-    Story.append(Paragraph(f"Cascavel/PR, {data_ext}.", styles['DireitaData']))
-    Story.append(Spacer(1, 8))
+    dados_resumo = [
+        ('LOTES', lotes_str),
+        ('TOTAL PROCESSOS', str(len(processos_unicos))),
+        ('TOTAL SUBSTANCIAS', str(len(all_mats))),
+        ('PESO TOTAL APROX.', f"{total_peso/1000:.3f} kg" if total_peso >= 1000 else f"{total_peso:.1f} g"),
+    ]
+    st.append(_tabela_info(dados_resumo, est))
+    st.append(Spacer(1, 12))
 
-    Story.append(Paragraph("▸ ASSINATURAS", styles['SectionHeader']))
-    Story.append(_assinaturas([
-        ("", "6º BPM — Encarregado da Custódia"),
-        ("", "Ministério Público"),
-        ("", "Vigilância Sanitária"),
-        ("", "Testemunha Judiciária"),
-    ], styles))
+    st.append(Paragraph("RELACAO DE SUBSTANCIAS POR VARA", est['Centro']))
+    st.append(Spacer(1, 6))
 
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    return filename
+    for vara, mats_vara in sorted(por_vara.items()):
+        st.append(Paragraph(f"<b>- {vara.upper()}</b> ({len(mats_vara)} itens)", est['CorpoLeft']))
+        st.append(Spacer(1, 4))
+        
+        for m in mats_vara[:10]:
+            oc = m.noticiado.ocorrencia if m.noticiado else None
+            proc = oc.processo or oc.bou if oc else '-'
+            subst = m.get_substancia_display() if m.substancia else m.get_categoria_display()
+            peso = str(m.peso_real or m.peso_estimado or '-')
+            lacre = m.numero_lacre or '-'
+            st.append(Paragraph(
+                f"  {proc[:25]} | {subst[:15]} | {peso} | Lacres: {lacre[:15]}",
+                ParagraphStyle('Lista', fontSize=8, fontName='Helvetica', leading=10)
+            ))
+        
+        if len(mats_vara) > 10:
+            st.append(Paragraph(f"  ... e mais {len(mats_vara) - 10} itens", 
+                ParagraphStyle('Lista', fontSize=8, fontName='Helvetica-Oblique', leading=10)))
+        
+        st.append(Spacer(1, 6))
+
+    st.append(Spacer(1, 15))
+    st.append(Paragraph(
+        "Requeremos que seja aposta a assinatura e o carimbo neste Documento, bem como "
+        "emitida a autorizacao judicial para a destruicao das substancias acima relacionadas.",
+        est['Corpo']
+    ))
+    st.append(Spacer(1, 20))
+
+    st.append(Paragraph("ASSINATURAS PARA AUTORIZACAO", est['Centro']))
+    st.append(Spacer(1, 6))
+    st.append(_bloco_assinaturas([
+        ("", "Comandante do 6o BPM - Matricula e Assinatura"),
+        ("", "Promotor(a) de Justica - Nome, Matricula e Assinatura"),
+        ("", "Juiz(a) de Direito - Nome e Assinatura"),
+    ], est))
+    st.append(Spacer(1, 15))
+
+    st.append(Paragraph(f"Cascavel/PR, {datetime.now().strftime('%d de %B de %Y')}.", est['Direita']))
+    st.append(Spacer(1, 10))
+    st.append(Paragraph(
+        "Apos a incineracao, este Documento devera ser devolvido ao 6o BPM para baixa no sistema.",
+        est['Rodape']
+    ))
+
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    
+    lote_info = [{
+        'identificador': l.identificador,
+        'processos': l.processos_count,
+        'materiais': l.materiais.count(),
+        'peso': l.peso_total
+    } for l in lotes_list]
+    
+    return fname, lote_info
 
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║   5. CAPAS EM MASSA (Impressão de várias capas)              ║
-# ╚═══════════════════════════════════════════════════════════════╝
+# ====================== CERTIDAO DE INCINERACAO (POS) ======================
+def gerar_certidao_incineracao_coletiva(lotes, usuario):
+    """Gera certidão DEPOIS da incineração (apos assinatura do termo)"""
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"certidao_coletiva_{ts}.pdf"
+    pasta = os.path.join(settings.MEDIA_ROOT, 'incineracao')
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, fname)
 
+    est = _estilos()
+    doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
+
+    st.append(Paragraph("CERTIDAO DE INCINERACAO EFETIVADA", est['Titulo']))
+    st.append(Paragraph("DESTRUICAO DE SUBSTANCIAS ENTORPECENTES", est['Subtitulo']))
+    st.append(Spacer(1, 10))
+
+    lotes_list = list(lotes)
+    lotes_str = ", ".join([l.identificador for l in lotes_list])
+    
+    st.append(Paragraph(
+        f"Certifico e dou fe que, em data de hoje, foi realizada a destruicao termica (incineracao) "
+        f"das substancias entorpecentes relacionadas nos lotes: <b>{lotes_str}</b>, "
+        f"em conformidade com as autorizacoes judiciais expedidas e em observancia as normas sanitarias vigentes.",
+        est['Corpo']
+    ))
+    st.append(Spacer(1, 10))
+
+    all_mats = []
+    for lote in lotes_list:
+        all_mats.extend(list(lote.materiais.all().select_related('noticiado__ocorrencia')))
+
+    por_vara = {}
+    for m in all_mats:
+        oc = m.noticiado.ocorrencia if m.noticiado else None
+        vn = oc.get_vara_display() if oc else "SEM VARA"
+        por_vara.setdefault(vn, []).append(m)
+
+    for vara, ms in por_vara.items():
+        st.append(Paragraph(f"- {vara.upper()}", est['Centro']))
+        st.append(Spacer(1, 4))
+        st.append(_tabela_items(ms, est,
+            cols=[0.7*cm, 2.5*cm, 2*cm, 3*cm, 2*cm, 2.5*cm],
+            col_headers=['N', 'BOU', 'PROC', 'NOTICIADO', 'PESO', 'SUBST']))
+
+    st.append(Spacer(1, 12))
+    st.append(Paragraph(f"Cascavel/PR, {datetime.now().strftime('%d de %B de %Y')}.", est['Direita']))
+    st.append(Spacer(1, 8))
+
+    st.append(Paragraph("ASSINATURAS", est['Centro']))
+    st.append(Spacer(1, 6))
+    st.append(_bloco_assinaturas([
+        ("", "6o BPM - Encarregado da Custodia"),
+        ("", "Ministerio Publico"),
+        ("", "Vigilancia Sanitaria"),
+        ("", "Testemunha Judiciaria"),
+    ], est))
+
+    doc.build(st, onFirstPage=_cabecalho_oficio, onLaterPages=_cabecalho_oficio)
+    return fname
+
+
+# ====================== CAPAS EM MASSA (LANDSCAPE) ======================
 def gerar_capas_lote_coletivas(lote_ids):
     from .models import LoteIncineracao
-    buffer = BytesIO()
+    buf = BytesIO()
 
-    styles = _get_styles()
-    styles.add(ParagraphStyle('CapaTitulo', fontSize=26, alignment=TA_CENTER,
-                              spaceAfter=20, fontName='Helvetica-Bold', textColor=VERDE_PMPR))
-    styles.add(ParagraphStyle('CapaID', fontSize=48, alignment=TA_CENTER,
-                              spaceAfter=30, fontName='Helvetica-Bold', leading=56,
-                              textColor=VERDE_PMPR))
-    styles.add(ParagraphStyle('CapaCenter', alignment=TA_CENTER, fontSize=10,
-                              fontName='Helvetica-Bold', textColor=CINZA_TEXTO))
+    est = _estilos()
+    est.add(ParagraphStyle('CapaTitulo', fontSize=20, alignment=TA_CENTER,
+        fontName='Helvetica-Bold', spaceAfter=15, textColor=PRETO))
+    est.add(ParagraphStyle('CapaID', fontSize=36, alignment=TA_CENTER,
+        fontName='Helvetica-Bold', spaceAfter=20, leading=42, textColor=PRETO))
 
-    doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            leftMargin=2*cm, rightMargin=2*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
-    lotes = LoteIncineracao.objects.filter(id__in=lote_ids)
+    W, H = landscape(A4)
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=2*cm, rightMargin=2*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
+    lotes = list(LoteIncineracao.objects.filter(id__in=lote_ids))
 
     for i, lote in enumerate(lotes):
-        Story.append(Spacer(1, 1*cm))
-        Story.append(Paragraph("CAIXA DE INCINERAÇÃO", styles['CapaTitulo']))
-        Story.append(Paragraph(f"<b>{lote.identificador}</b>", styles['CapaID']))
+        if i > 0:
+            st.append(PageBreak())
+        
+        st.append(Spacer(1, 1*cm))
+        st.append(Paragraph("CAIXA DE INCINERACAO", est['CapaTitulo']))
+        st.append(Paragraph(f"<b>{lote.identificador}</b>", est['CapaID']))
 
-        data = [
-            [Paragraph("<b>DATA:</b>", styles['CorpoNormal']),
-             lote.data_criacao.strftime('%d/%m/%Y')],
-            [Paragraph("<b>ESTADO:</b>", styles['CorpoNormal']),
-             "AGUARDANDO TRANSPORTE"],
-            [Paragraph("<b>PROCESSOS:</b>", styles['CorpoNormal']),
-             str(lote.processos_count)],
-            [Paragraph("<b>PESO APROX.:</b>", styles['CorpoNormal']),
-             f"{(lote.peso_total/1000):.2f} kg"],
+        dados = [
+            [Paragraph("<b>DATA:</b>", est['CorpoLeft']), Paragraph(lote.data_criacao.strftime('%d/%m/%Y'), est['CorpoLeft'])],
+            [Paragraph("<b>ESTADO:</b>", est['CorpoLeft']), Paragraph("AGUARDANDO TRANSPORTE", est['CorpoLeft'])],
+            [Paragraph("<b>PROCESSOS:</b>", est['CorpoLeft']), Paragraph(str(lote.processos_count), est['CorpoLeft'])],
+            [Paragraph("<b>PESO APROX.:</b>", est['CorpoLeft']), Paragraph(f"{(lote.peso_total/1000):.2f} kg", est['CorpoLeft'])],
         ]
-        t = Table(data, colWidths=[5*cm, 12*cm])
+        t = Table(dados, colWidths=[4*cm, 14*cm])
         t.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 1, VERDE_PMPR),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('PADDING', (0,0), (-1,-1), 8),
-            ('FONTSIZE', (0,0), (-1,-1), 12),
+            ('GRID', (0,0), (-1,-1), 1, PRETO),
             ('BACKGROUND', (0,0), (0,-1), CINZA_CLARO),
+            ('FONTSIZE', (0,0), (-1,-1), 11),
+            ('PADDING', (0,0), (-1,-1), 8),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ]))
-        Story.append(t)
-        Story.append(Spacer(1, 20))
+        st.append(t)
+        st.append(Spacer(1, 15))
 
         procs = lote.processos_list
-        Story.append(Paragraph("<b>PROCESSOS NESTA CAIXA:</b>", styles['CorpoNormal']))
-        Story.append(Spacer(1, 6))
-        Story.append(Paragraph(f"<font size=10>{', '.join(procs)}</font>", styles['CorpoNormal']))
+        st.append(Paragraph("<b>PROCESSOS:</b>", est['CorpoLeft']))
+        st.append(Spacer(1, 4))
+        st.append(Paragraph(", ".join(procs[:30]) + ("..." if len(procs) > 30 else ""), est['CorpoLeft']))
+        st.append(Spacer(1, 2*cm))
 
-        Story.append(Spacer(1, 3*cm))
-        Story.append(Paragraph("6º BATALHÃO DE POLÍCIA MILITAR — CASCAVEL/PR", styles['CapaCenter']))
-        Story.append(Paragraph("CARTÓRIO DE TERMOS CIRCUNSTANCIADOS", styles['CapaCenter']))
+        st.append(Paragraph("6o BATALHAO DE POLICIA MILITAR - CASCAVEL/PR", est['Centro']))
+        st.append(Paragraph("CARTORIO DE TERMOS CIRCUNSTANCIADOS", est['Centro']))
 
-        if i < len(lotes) - 1:
-            Story.append(PageBreak())
-
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    pdf = buffer.getvalue()
-    buffer.close()
+    doc.build(st, onFirstPage=_cabecalho_landscape, onLaterPages=_cabecalho_landscape)
+    pdf = buf.getvalue()
+    buf.close()
     return pdf
 
 
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║   6. RELATÓRIO FILTRADO (gerado a partir da tela de filtros) ║
-# ╚═══════════════════════════════════════════════════════════════╝
-
+# ====================== RELATORIO FILTRADO (LANDSCAPE) ======================
 def gerar_relatorio_filtrado_pdf(materiais_qs, filtros_desc, tipo='inventario'):
-    """
-    Gera um PDF profissional baseado nos materiais já filtrados.
-    tipo: 'inventario', 'incineracao', 'remessa', 'custodia'
-    filtros_desc: dicionário com labels dos filtros aplicados
-    """
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"relatorio_{tipo}_{timestamp}.pdf"
+    ts = timezone.now().strftime('%Y%m%d_%H%M%S')
+    fname = f"relatorio_{tipo}_{ts}.pdf"
     pasta = os.path.join(settings.MEDIA_ROOT, 'relatorios')
     os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, filename)
+    caminho = os.path.join(pasta, fname)
 
-    styles = _get_styles()
-    doc = SimpleDocTemplate(caminho, pagesize=A4,
-                            leftMargin=1.5*cm, rightMargin=1.5*cm,
-                            topMargin=4.5*cm, bottomMargin=2*cm)
-    Story = []
-
-    TITULOS = {
-        'inventario': 'RELATÓRIO DE INVENTÁRIO GERAL',
-        'incineracao': 'RELATÓRIO DE INCINERAÇÃO DE ENTORPECENTES',
-        'remessa': 'RELATÓRIO DE REMESSA AO JUDICIÁRIO',
-        'custodia': 'RELATÓRIO DE CUSTÓDIA EM COFRE',
+    titulos = {
+        'inventario': 'RELATORIO DE INVENTARIO GERAL',
+        'incineracao': 'RELATORIO DE INCINERACAO DE ENTORPECENTES',
+        'remessa': 'RELATORIO DE REMESSA AO JUDICIARIO',
+        'custodia': 'RELATORIO DE CUSTODIA EM COFRE',
     }
 
-    Story.append(Paragraph(TITULOS.get(tipo, 'RELATÓRIO'), styles['DocTitle']))
-    Story.append(Paragraph(
-        f"Gerado em {timezone.now().strftime('%d/%m/%Y às %H:%M')}",
-        styles['DocSubtitle']
-    ))
-    Story.append(Spacer(1, 8))
+    est = _estilos()
+    W, H = landscape(A4)
+    doc = SimpleDocTemplate(caminho, pagesize=landscape(A4), leftMargin=1.5*cm, rightMargin=1.5*cm,
+                           topMargin=2.5*cm, bottomMargin=2*cm)
+    st = []
 
-    # Mostrar filtros aplicados
+    st.append(Paragraph(titulos.get(tipo, 'RELATORIO'), est['Titulo']))
+    st.append(Paragraph(f"Gerado em {timezone.now().strftime('%d/%m/%Y as %H:%M')} - {materiais_qs.count()} registro(s)", est['Subtitulo']))
+    st.append(Spacer(1, 8))
+
     if filtros_desc:
-        Story.append(Paragraph("▸ PARÂMETROS DE FILTRO APLICADOS", styles['SectionHeader']))
-        filtro_pairs = [(k, v) for k, v in filtros_desc.items() if v]
-        if filtro_pairs:
-            Story.append(_info_box(filtro_pairs, styles,
-                                   col_widths=[3.5*cm, 5.5*cm, 3.5*cm, 5.5*cm]))
-        Story.append(Spacer(1, 10))
+        pares = [(k.upper(), v) for k, v in filtros_desc.items() if v]
+        if pares:
+            st.append(_tabela_info(pares, est, cols=[3*cm, 5*cm, 3*cm, 5*cm, 3*cm, 4.5*cm]))
+            st.append(Spacer(1, 8))
 
-    materiais = list(materiais_qs)
-    total = len(materiais)
+    mats = list(materiais_qs)
+    ent = sum(1 for m in mats if m.categoria == 'ENTORPECENTE')
+    ger = sum(1 for m in mats if m.categoria in ['SOM', 'FACA', 'SIMULACRO', 'OUTROS'])
+    Bous = len(set(m.noticiado.ocorrencia.bou for m in mats if m.noticiado and m.noticiado.ocorrencia))
 
-    # Resumo estatístico
-    Story.append(Paragraph("▸ RESUMO ESTATÍSTICO", styles['SectionHeader']))
-    ent_count = sum(1 for m in materiais if m.categoria == 'ENTORPECENTE')
-    ger_count = sum(1 for m in materiais if m.categoria in ['SOM','FACA','SIMULACRO','OUTROS'])
-    din_count = sum(1 for m in materiais if m.categoria == 'DINHEIRO')
-    bous = len(set(m.noticiado.ocorrencia.bou for m in materiais if m.noticiado and m.noticiado.ocorrencia))
-
-    resumo_data = [
-        ['Total de Itens', str(total), 'BOUs Distintos', str(bous)],
-        ['Entorpecentes', str(ent_count), 'Materiais Gerais', str(ger_count)],
-        ['Dinheiro/Valores', str(din_count), '', ''],
+    resumo = [
+        ('TOTAL', str(len(mats)), 'BOU UNICOS', str(Bous)),
+        ('ENTORPECENTES', str(ent), 'MATERIAIS GERAIS', str(ger)),
     ]
-    t_res = Table(resumo_data, colWidths=[4*cm, 4.5*cm, 4*cm, 4.5*cm])
+    t_res = Table(resumo, colWidths=[4*cm, 3.5*cm, 4*cm, 3.5*cm])
     t_res.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.4, CINZA_BORDA),
+        ('GRID', (0,0), (-1,-1), 0.5, PRETO),
         ('BACKGROUND', (0,0), (0,-1), CINZA_CLARO),
         ('BACKGROUND', (2,0), (2,-1), CINZA_CLARO),
         ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
         ('FONTNAME', (2,0), (2,-1), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,-1), 9),
-        ('PADDING', (0,0), (-1,-1), 6),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 5),
     ]))
-    Story.append(t_res)
-    Story.append(Spacer(1, 12))
+    st.append(t_res)
+    st.append(Spacer(1, 8))
 
-    # Tabela principal
-    col_tipo = 'incineracao' if tipo == 'incineracao' else ('remessa' if tipo == 'remessa' else 'completa')
-    Story.append(Paragraph(f"▸ RELAÇÃO DETALHADA ({total} registros)", styles['SectionHeader']))
-    Story.append(_tabela_materiais(materiais, styles, colunas=col_tipo))
-    Story.append(Spacer(1, 20))
+    st.append(Paragraph(f"RELACAO DETALHADA ({len(mats)} registros)", est['Centro']))
+    st.append(Spacer(1, 4))
+    st.append(_tabela_items_landscape(mats, est))
+    st.append(Spacer(1, 15))
 
-    # Rodapé com data e assinatura
-    data_ext = timezone.now().strftime('%d de %B de %Y')
-    Story.append(Paragraph(f"Cascavel/PR, {data_ext}.", styles['DireitaData']))
-    Story.append(Spacer(1, 10))
-    Story.append(_assinaturas([
-        ("", "Encarregado do Cartório\n6º Batalhão de Polícia Militar"),
-    ], styles))
+    st.append(Paragraph(f"Cascavel/PR, {timezone.now().strftime('%d de %B de %Y')}.", est['Direita']))
+    st.append(Spacer(1, 6))
+    st.append(_bloco_assinaturas([("", "Encarregado do Cartorio - 6o Batalhao de Policia Militar")], est, largura=W-3*cm))
 
-    doc.build(Story, onFirstPage=_draw_header, onLaterPages=_draw_header)
-    return os.path.join('relatorios', filename).replace("\\", "/")
+    doc.build(st, onFirstPage=_cabecalho_landscape, onLaterPages=_cabecalho_landscape)
+    return os.path.join('relatorios', fname).replace("\\", "/")

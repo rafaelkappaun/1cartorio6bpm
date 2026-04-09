@@ -4,7 +4,8 @@ import {
   Search, Filter, Calendar, ChevronDown, ChevronUp, X, Download,
   ShieldAlert, Scale, Flame, Package, Truck, DollarSign,
   BarChart3, PieChart as PieChartIcon, TrendingUp, Users, MapPin,
-  FileText, Gavel, Hash, User, Building, RefreshCw, SlidersHorizontal
+  FileText, Gavel, Hash, User, Building, RefreshCw, SlidersHorizontal,
+  Printer, FileBarChart, Shield, PackageX, UsersRound, FlameKindling
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -137,8 +138,6 @@ export default function Estatisticas() {
   const [showFilters, setShowFilters] = useState(true);
   const [materiais, setMateriais] = useState([]);
   const [showTable, setShowTable] = useState(false);
-  const [exportando, setExportando] = useState(false);
-
 
   // --- State dos Filtros ---
   const [filtros, setFiltros] = useState({
@@ -205,31 +204,56 @@ export default function Estatisticas() {
     }
   }, [buildQueryString]);
 
-  // Função para exportar PDF
-  const handleDownloadPDF = async (tipo) => {
-    setExportando(tipo);
-    try {
-      const qs = buildQueryString();
-      const params = new URLSearchParams(qs);
-      params.set('tipo', tipo);
-      const res = await api.post('/materiais/gerar_relatorio/', { tipo, filtros: {} });
-      if (res.data.file_url) {
-        window.open(res.data.file_url, '_blank');
+  // Função para imprimir relatório - abre URL do Django com filtros
+  const handleImprimirRelatorio = (tipo) => {
+    const params = new URLSearchParams();
+    
+    // Adiciona filtros do usuário (exceto categoria/status)
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && key !== 'categoria' && key !== 'status') {
+        params.append(key, value);
       }
-    } catch (e) {
-      console.error('Erro ao gerar PDF:', e);
-      alert('Erro ao gerar relatório profissional. Verifique o servidor.');
-    } finally {
-      setExportando(false);
+    });
+    
+    let url = '/relatorio/gerencial/';
+    
+    // Filtros específicos por tipo de relatório
+    switch (tipo) {
+      case 'inventario':
+        // Mostra tudo, usa filtros do usuário
+        break;
+      case 'entorpecentes':
+        params.set('categoria', 'ENTORPECENTE');
+        break;
+      case 'objetos':
+        params.set('categoria', 'SOM');
+        break;
+      case 'noticiados':
+        // Relatório de noticiados - mostra todos
+        break;
+      case 'incineracao':
+        // Usa rota específica de incineração
+        url = '/relatorio/incineracao/';
+        break;
+      default:
+        break;
     }
+    
+    const queryString = params.toString();
+    window.open(url + (queryString ? '?' + queryString : ''), '_blank');
+  };
+
+  const formatPeso = (gramas) => {
+    if (!gramas) return '0g';
+    if (gramas >= 1000) return `${(gramas / 1000).toFixed(2).replace('.', ',')} kg`;
+    return `${gramas.toFixed(1).replace('.', ',')} g`;
   };
 
   useEffect(() => {
-
     loadEstatisticas();
   }, [loadEstatisticas]);
 
-  // Opções de filtro derivadas — fallback se API não carregou
+  // Opções de filtro derivadas
   const opcoes = data?.opcoes_filtro || {
     categorias: [], substancias: [], status: [], varas: [], anos: []
   };
@@ -278,15 +302,9 @@ export default function Estatisticas() {
     return (labelMap[key] || (() => `${key}: ${value}`))();
   };
 
-  const formatPeso = (gramas) => {
-    if (!gramas) return '0g';
-    if (gramas >= 1000) return `${(gramas / 1000).toFixed(2).replace('.', ',')} kg`;
-    return `${gramas.toFixed(1).replace('.', ',')} g`;
-  };
-
   return (
     <div className="space-y-6 pb-12">
-      {/* ===== HEADER ===== */}
+      {/* Header */}
       <header className="flex justify-between items-start flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-2xl bg-gradient-to-br from-pmpr-green to-emerald-800 shadow-lg">
@@ -322,42 +340,60 @@ export default function Estatisticas() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Atualizar
           </button>
-
-          {/* NOVOS BOTÕES DE RELATÓRIO PROFISSIONAL */}
-          <div className="flex items-center gap-2 border-l border-gray-200 pl-4 ml-2">
-            <button
-              onClick={() => handleDownloadPDF('incineracao')}
-              disabled={exportando}
-              title="Gerar Relatório Profissional de Incineração"
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200"
-            >
-              {exportando === 'incineracao' ? <RefreshCw size={14} className="animate-spin" /> : <Flame size={14} />}
-              Incineração
-            </button>
-            <button
-              onClick={() => handleDownloadPDF('remessa')}
-              disabled={exportando}
-              title="Gerar Ofício de Remessa ao Fórum"
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-pmpr-green text-white text-xs font-bold hover:bg-emerald-900 transition-all shadow-sm"
-            >
-              {exportando === 'remessa' ? <RefreshCw size={14} className="animate-spin" /> : <Truck size={14} />}
-              Ofício Fórum
-            </button>
-            <button
-              onClick={() => handleDownloadPDF('inventario')}
-              disabled={exportando}
-              title="Imprimir Inventário Filtrado"
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-gray-50 text-gray-700 text-xs font-bold hover:bg-gray-100 transition-all border border-gray-200"
-            >
-              {exportando === 'inventario' ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
-              Inventário
-            </button>
-          </div>
         </div>
-
       </header>
 
-      {/* ===== PAINEL DE FILTROS ===== */}
+      {/* BOTÕES DE RELATÓRIOS - NOVO BLOCO */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+          <Printer size={16} className="text-pmpr-green" />
+          IMPRIMIR RELATÓRIOS (baseado nos filtros aplicados)
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <button
+            onClick={() => handleImprimirRelatorio('inventario')}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-all"
+          >
+            <FileBarChart size={24} className="text-gray-600" />
+            <span className="text-xs font-semibold text-gray-700 text-center">Inventário Geral</span>
+          </button>
+          <button
+            onClick={() => handleImprimirRelatorio('entorpecentes')}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 transition-all"
+          >
+            <Shield size={24} className="text-red-600" />
+            <span className="text-xs font-semibold text-red-700 text-center">Entorpecentes</span>
+          </button>
+          <button
+            onClick={() => handleImprimirRelatorio('objetos')}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all"
+          >
+            <PackageX size={24} className="text-blue-600" />
+            <span className="text-xs font-semibold text-blue-700 text-center">Objetos Diversos</span>
+          </button>
+          <button
+            onClick={() => handleImprimirRelatorio('noticiados')}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-all"
+          >
+            <UsersRound size={24} className="text-purple-600" />
+            <span className="text-xs font-semibold text-purple-700 text-center">Noticiados</span>
+          </button>
+          <button
+            onClick={() => handleImprimirRelatorio('incineracao')}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 transition-all"
+          >
+            <FlameKindling size={24} className="text-orange-600" />
+            <span className="text-xs font-semibold text-orange-700 text-center">Incineração</span>
+          </button>
+        </div>
+        {filtrosAtivos.length > 0 && (
+          <p className="text-xs text-gray-500 mt-3">
+            <span className="font-semibold">{filtrosAtivos.length} filtro(s)</span> aplicados — os relatórios acima refletirão esses filtros.
+          </p>
+        )}
+      </div>
+
+      {/* Painel de Filtros */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -476,7 +512,7 @@ export default function Estatisticas() {
                   label="Crime / Natureza Penal" icon={ShieldAlert}
                   value={filtros.natureza_penal}
                   onChange={(v) => setFiltro('natureza_penal', v)}
-                  placeholder="Ex: Tráfico, Furto..."
+                  placeholder="Ex: Tráfico, Furto, Perturbação..."
                 />
                 <FilterSelect
                   label="Unidade PM Origem" icon={Building}
@@ -518,7 +554,7 @@ export default function Estatisticas() {
         )}
       </AnimatePresence>
 
-      {/* ===== LOADING ===== */}
+      {/* Loading */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <RefreshCw size={32} className="text-pmpr-green animate-spin" />
@@ -526,7 +562,7 @@ export default function Estatisticas() {
         </div>
       ) : data ? (
         <>
-          {/* ===== CARDS RESUMO ===== */}
+          {/* Cards Resumo */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatMini
               title="Total de Itens" value={data.total}
@@ -567,7 +603,7 @@ export default function Estatisticas() {
             />
           </div>
 
-          {/* ===== GRÁFICOS ===== */}
+          {/* Gráficos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Por Categoria */}
             {data.por_categoria?.length > 0 && (
@@ -739,7 +775,7 @@ export default function Estatisticas() {
             )}
           </div>
 
-          {/* ===== TABELA DE RESULTADOS ===== */}
+          {/* Tabela de Resultados */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setShowTable(!showTable)}
@@ -802,12 +838,11 @@ export default function Estatisticas() {
                             <td className="px-4 py-3 text-gray-400 text-xs">
                               {m.data_criacao ? new Date(m.data_criacao).toLocaleDateString('pt-BR') : '-'}
                             </td>
-
                           </tr>
                         ))}
                         {materiais.length === 0 && (
                           <tr>
-                            <td colSpan="7" className="px-6 py-12 text-center text-gray-400">
+                            <td colSpan="8" className="px-6 py-12 text-center text-gray-400">
                               Nenhum registro encontrado para os filtros aplicados.
                             </td>
                           </tr>

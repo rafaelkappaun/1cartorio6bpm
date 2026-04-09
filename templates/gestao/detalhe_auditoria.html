@@ -1,0 +1,58 @@
+{% extends "painel_base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold"><i class="bi bi-fingerprint text-primary"></i> Rastro de Custódia: {{ material.noticiado.ocorrencia.bou }}</h4>
+        <button onclick="window.print()" class="btn btn-sm btn-outline-dark no-print">
+            <i class="bi bi-printer"></i> Imprimir Log
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-dark text-white fw-bold small">DADOS DO MATERIAL</div>
+                <div class="card-body small">
+                    <p><b>Substância:</b> {{ material.get_substancia_display }}</p>
+                    <p><b>Peso Atual:</b> {{ material.peso_formatado }}</p>
+                    <p><b>Lacre Atual:</b> <span class="badge bg-warning text-dark">{{ material.numero_lacre }}</span></p>
+                    <p><b>Vara:</b> {{ material.noticiado.ocorrencia.get_vara_display }}</p>
+                    <hr>
+                    <p><b>Noticiado:</b> {{ material.noticiado.nome }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold small">HISTÓRICO DE MOVIMENTAÇÕES</div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for log in historico %}
+                        <div class="d-flex mb-4">
+                            <div class="text-center me-3" style="min-width: 80px;">
+                                <div class="small fw-bold">{{ log.data_criacao|date:"d/m/y" }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ log.data_criacao|date:"H:i" }}</div>
+                            </div>
+                            <div class="border-start ps-3 pb-2 border-3 border-primary">
+                                <span class="badge bg-primary mb-1">{{ log.get_status_na_epoca_display }}</span>
+                                <div class="small fw-bold">Responsável: {% if log.criado_por %}{{ log.criado_por.get_full_name|default:log.criado_por.username }}{% else %}Sistema{% endif %}</div>
+                                <div class="text-muted small italic">"{{ log.observacao|default:'Sem observações registradas.' }}"</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">Nenhum registro de auditoria encontrado para este item.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print { .no-print { display: none; } }
+    .timeline { position: relative; }
+</style>
+{% endblock %}

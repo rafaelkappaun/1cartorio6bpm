@@ -106,25 +106,20 @@ class LoteIncineracao(AuditoriaModel):
 
     @property
     def processos_count(self):
-        # Cada material pode pertencer a uma ocorrência diferente, mas no lote 
-        # queremos saber quantos NOTICIADOS (processos) estão aqui.
-        # Geralmente 1 BOU = 1 Processo, então contamos BOUs únicos.
         return self.materiais.values('noticiado__ocorrencia__bou').distinct().count()
 
     @property
     def processos_list(self):
-        # Lista de BOUs únicos no lote
         return list(self.materiais.values_list('noticiado__ocorrencia__bou', flat=True).distinct())
 
     @property
     def peso_total(self):
-        from django.db.models import Sum
-        # Soma o peso real (ou estimado se real for nulo) de todos os materiais colecionados
-        total = 0
-        for mat in self.materiais.all():
-            p = mat.peso_real if mat.peso_real is not None else mat.peso_estimado
-            if p: total += float(p)
-        return total
+        from django.db.models import Sum, Coalesce
+        from django.db.models.fields import DecimalField
+        result = self.materiais.aggregate(
+            total=Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())
+        )
+        return float(result['total'] or 0)
 
 
 class Ocorrencia(AuditoriaModel):

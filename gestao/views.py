@@ -11,7 +11,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 from .models import (
-    DROGAS_CHOICES, GRADUACAO_CHOICES, VARA_CHOICES, 
+    DROGAS_CHOICES, GRADUACAO_CHOICES, VARA_CHOICES, CATEGORIA_CHOICES,
     Ocorrencia, Material, Noticiado, LoteIncineracao, RegistroHistorico
 )
 
@@ -232,6 +232,299 @@ def painel_principal(request):
     }
     return render(request, 'gestao/painel.html', context)
 
+
+# --- 3.5. RELATÓRIO GERENCIAL ---
+def relatorio_gerencial(request):
+    """
+    Relatório gerencial completo com todos os filtros aplicados.
+    """
+    from django.db.models import DecimalField
+    from django.db.models.functions import Coalesce
+    from django.db.models.functions import TruncMonth
+    
+    # Captura todos os filtros
+    filtros = {}
+    params = request.GET
+    
+    for key in ['categoria', 'substancia', 'status', 'vara', 'natureza_penal', 
+                 'data_inicio', 'data_fim', 'ano', 'semestre', 'unidade_origem']:
+        val = params.get(key)
+        if val:
+            filtros[key] = val
+    
+    # Constrói query base
+    qs = Material.objects.all().select_related('noticiado__ocorrencia')
+    
+    # Aplica filtros
+    if filtros.get('categoria'):
+        qs = qs.filter(categoria=filtros['categoria'])
+    if filtros.get('substancia'):
+        qs = qs.filter(substancia=filtros['substancia'])
+    if filtros.get('status'):
+        qs = qs.filter(status=filtros['status'])
+    if filtros.get('vara'):
+        qs = qs.filter(noticiado__ocorrencia__vara=filtros['vara'])
+    if filtros.get('natureza_penal'):
+        qs = qs.filter(noticiado__ocorrencia__natureza_penal__icontains=filtros['natureza_penal'])
+    if filtros.get('unidade_origem'):
+        qs = qs.filter(noticiado__ocorrencia__unidade_origem=filtros['unidade_origem'])
+    if filtros.get('ano'):
+        qs = qs.filter(noticiado__ocorrencia__data_registro_bou__year=filtros['ano'])
+    if filtros.get('semestre'):
+        sem = int(filtros['semestre'])
+        if sem == 1:
+            qs = qs.filter(noticiado__ocorrencia__data_registro_bou__month__range=(1, 6))
+        else:
+            qs = qs.filter(noticiado__ocorrencia__data_registro_bou__month__range=(7, 12))
+    if filtros.get('data_inicio'):
+        qs = qs.filter(data_criacao__date__gte=filtros['data_inicio'])
+    if filtros.get('data_fim'):
+        qs = qs.filter(data_criacao__date__lte=filtros['data_fim'])
+    
+    # Resumo
+    total_materiais = qs.count()
+    total_noticiados = qs.values('noticiado').distinct().count()
+    Bous = qs.values('noticiado__ocorrencia__bou').distinct().count()
+    peso_total = float(
+        qs.filter(categoria='ENTORPECENTE')
+        .aggregate(total=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))['total'] or 0
+    )
+    
+    # Por Categoria
+    por_categoria = list(
+        qs.values('categoria')
+        .annotate(total=Count('id'), peso=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))
+        .order_by('-total')
+    )
+    cat_map = dict([
+        ('ENTORPECENTE', 'Entorpecentes'),
+        ('DINHEIRO', 'Dinheiro/Valores'),
+        ('SOM', 'Aparelho de Som'),
+        ('FACA', 'Arma Branca'),
+        ('SIMULACRO', 'Simulacro'),
+        ('OUTROS', 'Outros'),
+    ])
+    for item in por_categoria:
+        item['label'] = cat_map.get(item['categoria'], item['categoria'])
+        item['peso'] = float(item['peso'] or 0)
+    max_categoria = max([c['total'] for c in por_categoria], default=1)
+    
+    # Por Substância
+    por_substancia = list(
+        qs.filter(categoria='ENTORPECENTE')
+        .values('substancia')
+        .annotate(total=Count('id'), peso=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))
+        .order_by('-total')
+    )
+    subst_map = dict(DROGAS_CHOICES)
+    for item in por_substancia:
+        item['label'] = subst_map.get(item['substancia'], item['substancia'] or 'Não especificada')
+        item['peso'] = float(item['peso'] or 0)
+    
+    # Por Status
+    por_status = list(
+        qs.values('status')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    status_map = dict([
+        ('RECEBIDO', 'Recebido'),
+        ('ARMAZENADO', 'Armazenado'),
+        ('AUTORIZADO', 'Autorizado'),
+        ('AGUARDANDO_INCINERACAO', 'Aguardando Incineração'),
+        ('INCINERADO', 'Incinerado'),
+        ('ENTREGUE_AO_JUDICIARIO', 'Entregue ao Judiciário'),
+    ])
+    for item in por_status:
+        item['label'] = status_map.get(item['status'], item['status'])
+    max_status = max([s['total'] for s in por_status], default=1)
+    
+    # Por Natureza Penal
+    por_natureza = list(
+        qs.filter(noticiado__ocorrencia__natureza_penal__isnull=False)
+        .exclude(noticiado__ocorrencia__natureza_penal='')
+        .values('noticiado__ocorrencia__natureza_penal')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:15]
+    )
+    for item in por_natureza:
+        item['natureza'] = item.pop('noticiado__ocorrencia__natureza_penal')
+    
+    # Por Unidade
+    por_unidade = list(
+        qs.values('noticiado__ocorrencia__unidade_origem')
+        .annotate(total=Count('id'), Bous=Count('noticiado__ocorrencia__bou', distinct=True))
+        .order_by('-total')[:10]
+    )
+    for item in por_unidade:
+        item['unidade'] = item.pop('noticiado__ocorrencia__unidade_origem')
+    
+    # Por Mês
+    por_mes = list(
+        qs.annotate(mes=TruncMonth('noticiado__ocorrencia__data_registro_bou'))
+        .values('mes')
+        .annotate(total=Count('id'))
+        .order_by('mes')
+    )
+    for item in por_mes:
+        if item['mes']:
+            item['mes_label'] = item['mes'].strftime('%B/%Y').title()
+            item['mes'] = item['mes'].isoformat()
+    max_mes = max([m['total'] for m in por_mes], default=1)
+    
+    context = {
+        'filtros': filtros,
+        'resumo': {
+            'total_materiais': total_materiais,
+            'total_noticiados': total_noticiados,
+            'total_bous': Bous,
+            'peso_total_gramas': peso_total,
+        },
+        'por_categoria': por_categoria,
+        'por_substancia': por_substancia,
+        'por_status': por_status,
+        'por_natureza': por_natureza,
+        'por_unidade': por_unidade,
+        'por_mes': por_mes,
+        'max_categoria': max_categoria,
+        'max_status': max_status,
+        'max_mes': max_mes,
+        'DROGAS_CHOICES': DROGAS_CHOICES,
+        'CATEGORIA_CHOICES': [
+            ('ENTORPECENTE', 'Entorpecentes'),
+            ('DINHEIRO', 'Dinheiro/Valores'),
+            ('SOM', 'Aparelho de Som'),
+            ('FACA', 'Arma Branca'),
+            ('SIMULACRO', 'Simulacro'),
+            ('OUTROS', 'Outros'),
+        ],
+        'VARA_CHOICES': VARA_CHOICES,
+        'anos_disponiveis': range(datetime.now().year - 3, datetime.now().year + 1),
+    }
+    
+    return render(request, 'gestao/relatorio_gerencial.html', context)
+
+
+# --- 3.6. RELATÓRIO DE INCINERAÇÃO ---
+def relatorio_incineracao(request):
+    """
+    Relatório específico para materiais incinerados/destruídos.
+    """
+    from django.db.models import DecimalField
+    from django.db.models.functions import Coalesce
+    from django.db.models.functions import TruncMonth
+    
+    filtros = {}
+    params = request.GET
+    
+    for key in ['categoria', 'substancia', 'vara', 'natureza_penal', 
+                 'data_inicio', 'data_fim', 'ano', 'semestre', 'unidade_origem']:
+        val = params.get(key)
+        if val:
+            filtros[key] = val
+    
+    # Base: apenas materiais incinerados
+    qs = Material.objects.filter(status='INCINERADO').select_related('noticiado__ocorrencia')
+    
+    # Aplica filtros (mesma lógica do frontend/API)
+    if filtros.get('categoria'):
+        qs = qs.filter(categoria=filtros['categoria'])
+    if filtros.get('substancia'):
+        qs = qs.filter(substancia=filtros['substancia'])
+    if filtros.get('vara'):
+        qs = qs.filter(noticiado__ocorrencia__vara=filtros['vara'])
+    if filtros.get('natureza_penal'):
+        qs = qs.filter(noticiado__ocorrencia__natureza_penal__icontains=filtros['natureza_penal'])
+    if filtros.get('unidade_origem'):
+        qs = qs.filter(noticiado__ocorrencia__unidade_origem=filtros['unidade_origem'])
+    # Filtro por ANO usa data_criacao (mesma lógica do frontend)
+    if filtros.get('ano'):
+        qs = qs.filter(data_criacao__year=filtros['ano'])
+    if filtros.get('semestre'):
+        sem = int(filtros['semestre'])
+        if sem == 1:
+            qs = qs.filter(data_criacao__month__range=(1, 6))
+        else:
+            qs = qs.filter(data_criacao__month__range=(7, 12))
+    if filtros.get('data_inicio'):
+        qs = qs.filter(data_criacao__date__gte=filtros['data_inicio'])
+    if filtros.get('data_fim'):
+        qs = qs.filter(data_criacao__date__lte=filtros['data_fim'])
+    
+    total_materiais = qs.count()
+    total_noticiados = qs.values('noticiado').distinct().count()
+    Bous = qs.values('noticiado__ocorrencia__bou').distinct().count()
+    peso_total = float(
+        qs.filter(categoria='ENTORPECENTE')
+        .aggregate(total=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))['total'] or 0
+    )
+    
+    por_substancia = list(
+        qs.filter(categoria='ENTORPECENTE')
+        .values('substancia')
+        .annotate(total=Count('id'), peso=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))
+        .order_by('-total')
+    )
+    subst_map = dict(DROGAS_CHOICES)
+    for item in por_substancia:
+        item['label'] = subst_map.get(item['substancia'], item['substancia'] or 'Não especificada')
+        item['peso'] = float(item['peso'] or 0)
+    
+    por_vara = list(
+        qs.values('noticiado__ocorrencia__vara')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    vara_map = dict(VARA_CHOICES)
+    for item in por_vara:
+        item['label'] = vara_map.get(item['noticiado__ocorrencia__vara'], item['noticiado__ocorrencia__vara'] or 'Não definida')
+    
+    por_natureza = list(
+        qs.filter(noticiado__ocorrencia__natureza_penal__isnull=False)
+        .exclude(noticiado__ocorrencia__natureza_penal='')
+        .values('noticiado__ocorrencia__natureza_penal')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:15]
+    )
+    for item in por_natureza:
+        item['natureza'] = item.pop('noticiado__ocorrencia__natureza_penal')
+    
+    # Labels amigáveis para filtros
+    filtros_labels = {}
+    label_map = {
+        'categoria': dict(CATEGORIA_CHOICES),
+        'substancia': dict(DROGAS_CHOICES),
+        'vara': dict(VARA_CHOICES),
+        'ano': lambda v: f'Ano {v}',
+        'semestre': lambda v: f'{v}º Semestre',
+        'data_inicio': lambda v: f'De {v}',
+        'data_fim': lambda v: f'Até {v}',
+    }
+    for key, value in filtros.items():
+        if key in label_map:
+            mapper = label_map[key]
+            filtros_labels[key] = mapper(value) if callable(mapper) else mapper.get(value, value)
+        else:
+            filtros_labels[key] = value
+    
+    context = {
+        'filtros': filtros_labels,
+        'resumo': {
+            'total_materiais': total_materiais,
+            'total_noticiados': total_noticiados,
+            'total_bous': Bous,
+            'peso_total_gramas': peso_total,
+        },
+        'por_substancia': por_substancia,
+        'por_vara': por_vara,
+        'por_natureza': por_natureza,
+        'VARA_CHOICES': VARA_CHOICES,
+        'anos_disponiveis': range(datetime.now().year - 3, datetime.now().year + 1),
+    }
+    
+    return render(request, 'gestao/relatorio_incinceracao.html', context)
+
+
 # --- 4. LISTAGENS ---
 
 @login_required
@@ -280,55 +573,123 @@ def cadastro_entrada(request):
     }
     return render(request, 'gestao/cadastro_entrada.html', context)
 
-# --- FUNÇÕES QUE FALTARAM (LISTAGENS E LOTES) ---
-
 @login_required
 def lotes_montagem(request):
-    # Agora ele busca tanto os que você já autorizou quanto os que só foram conferidos
-    fila_autorizados = Material.objects.filter(
-        status__in=['ARMAZENADO', 'AUTORIZADO'], 
-        lote__isnull=True
+    materiais_autorizados = Material.objects.filter(
+        status='AUTORIZADO', 
+        lote__isnull=True,
+        categoria='ENTORPECENTE'
+    ).select_related('noticiado__ocorrencia').order_by('noticiado__ocorrencia__data_registro_bou')
+
+    processos_agrupados = {}
+    for mat in materiais_autorizados:
+        oc = mat.noticiado.ocorrencia
+        proc_key = oc.processo or oc.bou
+        if proc_key not in processos_agrupados:
+            processos_agrupados[proc_key] = {
+                'bou': oc.bou,
+                'vara': oc.vara,
+                'vara_display': oc.get_vara_display(),
+                'data': oc.data_registro_bou,
+                'materiais': [],
+                'processo': oc.processo,
+            }
+        processos_agrupados[proc_key]['materiais'].append(mat)
+
+    fila_conferidos = Material.objects.filter(
+        status__in=['ARMAZENADO'], 
+        lote__isnull=True,
+        categoria='ENTORPECENTE',
+        noticiado__ocorrencia__vara__isnull=False
     ).select_related('noticiado__ocorrencia')
 
-    total_na_fila = fila_autorizados.count()
-    lotes_existentes = LoteIncineracao.objects.annotate(
-        total_processos=Count('materiais')
-    ).order_by('-id')[:8]
+    total_processos = len(processos_agrupados)
+    total_itens = materiais_autorizados.count()
+    
+    lotes_abertos = LoteIncineracao.objects.filter(status='ABERTO')
+    lotes_abertos_list = []
+    for lote in lotes_abertos:
+        mats = list(lote.materiais.filter(categoria='ENTORPECENTE').select_related('noticiado__ocorrencia'))
+        lote._materiais_count = len(mats)
+        lote._processos_set = set()
+        for m in mats:
+            if m.noticiado and m.noticiado.ocorrencia:
+                proc = m.noticiado.ocorrencia.processo or m.noticiado.ocorrencia.bou
+                lote._processos_set.add(proc)
+        lote._processos_count = len(lote._processos_set)
+        if mats:
+            lotes_abertos_list.append(lote)
+    
+    lotes_incinerados = LoteIncineracao.objects.filter(status='INCINERADO').order_by('-data_incineracao')[:10]
 
     context = {
-        'fila_autorizados': fila_autorizados,
-        'total_na_fila': total_na_fila,
-        'lotes_existentes': lotes_existentes,
+        'processos_agrupados': processos_agrupados,
+        'materiais_autorizados': materiais_autorizados,
+        'fila_conferidos': fila_conferidos,
+        'total_processos': total_processos,
+        'total_itens': total_itens,
+        'lotes_abertos': lotes_abertos_list,
+        'lotes_incinerados': lotes_incinerados,
     }
     return render(request, 'gestao/lotes_montagem.html', context)
 
 @login_required
 @transaction.atomic
 def fechar_lote_manual(request):
-    """ Agrupa materiais selecionados em um novo Lote de Incineração """
     if request.method == "POST":
-        ids = request.POST.getlist('itens_selecionados')
-        if not ids:
-            messages.warning(request, "Selecione ao menos um item para criar o lote.")
+        processo_keys = request.POST.getlist('processos_selecionados')
+        if not processo_keys:
+            messages.warning(request, "Selecione ao menos um processo para criar o lote.")
             return redirect('lotes_montagem')
+        
         try:
             ano_atual = timezone.now().year
-            # Conta quantos lotes já existem no ano para gerar o número sequencial
-            count_lotes = LoteIncineracao.objects.filter(data_criacao__year=ano_atual).count() + 1
-            identificador = f"LOTE-{ano_atual}-{count_lotes:03d}"
+            count_lotes = LoteIncineracao.objects.filter(data_criacao__year=ano_atual).count()
             
-            novo_lote = LoteIncineracao.objects.create(
-                identificador=identificador, 
-                status='ABERTO', 
-                criado_por=request.user
-            )
+            processos_criados = []
+            for i in range(0, len(processo_keys), 20):
+                bloco = processo_keys[i:i+20]
+                count_lotes += 1
+                identificador = f"LOTE-{ano_atual}-{count_lotes:03d}"
+                
+                lote = LoteIncineracao.objects.create(
+                    identificador=identificador, 
+                    status='ABERTO', 
+                    criado_por=request.user
+                )
+                
+                for proc_key in bloco:
+                    materiais = Material.objects.filter(
+                        status='AUTORIZADO',
+                        lote__isnull=True,
+                        noticiado__ocorrencia__processo=proc_key
+                    )
+                    if not materiais.exists():
+                        materiais = Material.objects.filter(
+                            status='AUTORIZADO',
+                            lote__isnull=True,
+                            noticiado__ocorrencia__bou=proc_key
+                        )
+                    
+                    for mat in materiais:
+                        mat.lote = lote
+                        mat.status = 'AGUARDANDO_INCINERACAO'
+                        mat.save(update_fields=['lote', 'status'])
+                        RegistroHistorico.objects.create(
+                            material=mat,
+                            criado_por=request.user,
+                            status_na_epoca='AGUARDANDO_INCINERACAO',
+                            observacao=f"Material adicionado ao Lote {identificador}"
+                        )
+                    
+                    if materiais.exists():
+                        processos_criados.append(proc_key)
             
-            # Vincula os materiais ao lote
-            Material.objects.filter(id__in=ids).update(lote=novo_lote)
-            
-            messages.success(request, f"Lote {identificador} gerado com sucesso!")
+            num_lotes = (len(processo_keys) + 19) // 20
+            messages.success(request, f"{num_lotes} lote(s) criado(s) com {len(processos_criados)} processo(s)!")
         except Exception as e:
             messages.error(request, f"Erro ao gerar lote: {e}")
+    
     return redirect('lotes_montagem')
 
 @login_required
@@ -346,10 +707,10 @@ def lotes_incineracao(request):
     ano_sel_int = int(ano_sel) if (ano_sel and ano_sel.isdigit()) else ano_atual
     sem_sel_int = int(semestre_sel) if (semestre_sel and semestre_sel.isdigit()) else semestre_atual
 
-    # Lotes que ainda não foram queimados
-    lotes_pendentes = LoteIncineracao.objects.exclude(status='INCINERADO').prefetch_related('materiais')
+    lotes_pendentes = LoteIncineracao.objects.exclude(status='INCINERADO').prefetch_related(
+        'materiais__noticiado__ocorrencia'
+    )
 
-    # Lotes concluídos com filtro de data
     mes_inicio = 1 if sem_sel_int == 1 else 7
     mes_fim = 6 if sem_sel_int == 1 else 12
 
@@ -358,7 +719,7 @@ def lotes_incineracao(request):
         data_incineracao__year=ano_sel_int,
         data_incineracao__month__gte=mes_inicio,
         data_incineracao__month__lte=mes_fim
-    ).prefetch_related('materiais')
+    ).prefetch_related('materiais__noticiado__ocorrencia')
 
     # Filtro opcional por Vara Criminal
     if vara_sel:

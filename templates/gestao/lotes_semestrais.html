@@ -1,0 +1,168 @@
+{% extends "painel_base.html" %}
+
+{% block content %}
+<style>
+    .nav-tabs .nav-link { color: #6c757d; border: none; border-bottom: 3px solid transparent; }
+    .nav-tabs .nav-link.active { color: #dc3545 !important; border-bottom-color: #dc3545; background: none; }
+    .card-lote { transition: transform 0.2s; }
+    .card-lote:hover { transform: translateY(-3px); }
+    .badge-protocolo { font-family: monospace; letter-spacing: 1px; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-fire text-danger me-2"></i>Gestão e Controle de Lotes</h3>
+            <p class="text-muted small">Finalize queimas autorizadas e consulte o histórico de incinerações.</p>
+        </div>
+        
+        <form method="GET" id="filtroForm" class="d-flex gap-2 bg-white p-2 rounded shadow-sm border">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                <select name="ano" class="form-select" onchange="this.form.submit()">
+                    {% for a in anos_disponiveis %}
+                        <option value="{{ a }}" {% if filtros.ano == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <select name="semestre" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="1" {% if filtros.semestre == 1 %}selected{% endif %}>1º Semestre</option>
+                <option value="2" {% if filtros.semestre == 2 %}selected{% endif %}>2º Semestre</option>
+            </select>
+
+            <select name="vara" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Todas as Varas</option>
+                {% for v in varas_reais %}
+                    <option value="{{ v }}" {% if filtros.vara == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="loteTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link {% if not request.GET.ano and not request.GET.vara %}active{% endif %} fw-bold" 
+                    id="pendentes-tab" data-bs-toggle="tab" data-bs-target="#pendentes" type="button" role="tab">
+                <i class="bi bi-hourglass-split me-1"></i>Aguardando Queima 
+                <span class="badge bg-warning text-dark ms-2">{{ lotes_pendentes.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link {% if request.GET.ano or request.GET.vara %}active{% endif %} fw-bold" 
+                    id="concluidos-tab" data-bs-toggle="tab" data-bs-target="#concluidos" type="button" role="tab">
+                <i class="bi bi-check-all me-1"></i>Já Incinerados 
+                <span class="badge bg-success ms-2">{{ lotes_concluidos.count }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="loteTabsContent">
+        
+        <div class="tab-pane fade {% if not request.GET.ano and not request.GET.vara %}show active{% endif %}" id="pendentes" role="tabpanel">
+            <div class="row">
+                {% for lote in lotes_pendentes %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card card-lote shadow-sm border-0 border-top border-warning border-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <h5 class="fw-bold mb-0">Lote #{{ lote.identificador }}</h5>
+                                    <span class="badge bg-light text-muted border">{{ lote.total_processos }} itens</span>
+                                </div>
+                                <p class="text-muted small mb-3"><i class="bi bi-clock me-1"></i>Criado em {{ lote.data_criacao|date:"d/m/Y" }}</p>
+                                
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'imprimir_capa_lote' lote.id %}" target="_blank" class="btn btn-outline-dark btn-sm">
+                                        <i class="bi bi-printer me-2"></i>Relação de Carga
+                                    </a>
+                                    <button class="btn btn-danger btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalFinalizar{{ lote.id }}">
+                                        <i class="bi bi-fire me-2"></i>CONFIRMAR INCINERAÇÃO
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modalFinalizar{{ lote.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow-lg">
+                                <form action="{% url 'finalizar_lote_com_eprotocolo' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="lote_id" value="{{ lote.id }}">
+                                    <div class="modal-header bg-dark text-white">
+                                        <h5 class="modal-title fw-bold">FINALIZAR LOTE #{{ lote.identificador }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body py-4">
+                                        <div class="alert alert-warning border-0 small mb-4">
+                                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                            Atenção: Esta ação confirmará a destruição física do material e gerará a certidão definitiva.
+                                        </div>
+                                        <label class="form-label fw-bold text-dark">Número do E-Protocolo Geral (CGE)</label>
+                                        <input type="text" name="eprotocolo_geral" class="form-control form-control-lg border-2 shadow-sm" 
+                                               placeholder="Ex: 21.345.678-0" required>
+                                        <div class="form-text mt-2">Insira o número do protocolo que formaliza a queima no sistema estadual.</div>
+                                    </div>
+                                    <div class="modal-footer bg-light border-0">
+                                        <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-danger fw-bold px-4">CONFIRMAR E ENCERRAR</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-clipboard-check display-1 text-light"></i>
+                        <p class="text-muted fw-bold mt-3">Tudo em dia! Não há lotes aguardando incineração.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade {% if request.GET.ano or request.GET.vara %}show active{% endif %}" id="concluidos" role="tabpanel">
+            <div class="row">
+                {% for lote in lotes_concluidos %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-0 shadow-sm border-start border-success border-4">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="fw-bold mb-0 me-2">Lote #{{ lote.identificador }}</h6>
+                                        <span class="badge bg-success-subtle text-success" style="font-size: 10px;">INCINERADO</span>
+                                    </div>
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="bi bi-calendar-check me-1"></i>{{ lote.data_incineracao|date:"d/m/Y" }}
+                                    </small>
+                                    <code class="badge bg-light text-dark border-0 p-0 badge-protocolo">e-Prot: {{ lote.eprotocolo_geral }}</code>
+                                </div>
+                                <div class="text-end">
+                                    <a href="{% url 'imprimir_certidao_lote' lote.id %}" target="_blank" class="btn btn-sm btn-dark fw-bold shadow-sm">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i>Certidão
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-search display-1 text-light"></i>
+                        <p class="text-muted fw-bold mt-3">Nenhum lote incinerado encontrado para os filtros selecionados.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        // Se houver filtro ativo, garante que a aba de concluídos seja a visível
+        if (urlParams.has('ano') || urlParams.has('vara')) {
+            var tabIncinerados = new bootstrap.Tab(document.querySelector('#concluidos-tab'));
+            tabIncinerados.show();
+        }
+    });
+</script>
+{% endblock %}

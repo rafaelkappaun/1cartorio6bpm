@@ -1,4 +1,6 @@
 import logging
+from decimal import Decimal
+from django.db.models import Sum, Count, F, Value
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from .models import (
@@ -266,7 +268,6 @@ class LoteIncineracaoSerializer(serializers.ModelSerializer):
     peso_total = serializers.SerializerMethodField()
     processos_list = serializers.SerializerMethodField()
 
-
     class Meta:
         model = LoteIncineracao
         fields = [
@@ -275,32 +276,41 @@ class LoteIncineracaoSerializer(serializers.ModelSerializer):
             'processos_count', 'peso_total', 'processos_list'
         ]
 
-
     @extend_schema_field(serializers.IntegerField())
     def get_processos_count(self, obj):
-        return obj.materiais.values_list('noticiado__ocorrencia__bou', flat=True).distinct().count()
+        if hasattr(obj, '_processos_count_cache'):
+            return obj._processos_count_cache
+        return obj.materiais.values('noticiado__ocorrencia__bou').distinct().count()
 
     @extend_schema_field(serializers.FloatField())
     def get_peso_total(self, obj):
-        # Soma peso real ou estimado
-        import decimal
-        total = decimal.Decimal(0)
-        for m in obj.materiais.all():
-            val = m.peso_real if m.peso_real is not None else m.peso_estimado
-            if val:
-                # Converte para gramas para soma uniforme se necessário, 
-                # mas aqui vamos apenas somar o valor absoluto para simplificar a exibição rápida
-                total += val
-        return float(total)
+        if hasattr(obj, '_peso_total_cache'):
+            return obj._peso_total_cache
+        try:
+            from django.db.models import Sum
+            from django.db.models.functions import Coalesce
+            result = obj.materiais.aggregate(
+                total=Sum(Coalesce('peso_real', 'peso_estimado'))
+            )
+            return float(result['total'] or 0)
+        except Exception:
+            return 0.0
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_processos_list(self, obj):
-        # Retorna lista única de BOU e Processo
+        if hasattr(obj, '_processos_list_cache'):
+            return obj._processos_list_cache
+        values = obj.materiais.values_list(
+            'noticiado__ocorrencia__processo', 
+            'noticiado__ocorrencia__bou'
+        ).distinct()
         procs = []
-        for m in obj.materiais.all():
-            p = m.noticiado.ocorrencia.processo or m.noticiado.ocorrencia.bou
-            if p not in procs:
-                procs.append(p)
+        seen = set()
+        for processo, bou in values:
+            key = processo or bou
+            if key and key not in seen:
+                procs.append(key)
+                seen.add(key)
         return procs
 
     @extend_schema_field(serializers.CharField())

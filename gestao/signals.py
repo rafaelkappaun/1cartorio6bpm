@@ -1,13 +1,24 @@
-from django.db.models.signals import post_save
+import logging
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.db.models import Count
 from .models import Material, RegistroHistorico, LoteIncineracao
 
+logger = logging.getLogger(__name__)
+
+_materiais_original_status = {}
+
+@receiver(pre_save, sender=Material)
+def guardar_status_anterior(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            original = Material.objects.get(pk=instance.pk)
+            _materiais_original_status[instance.pk] = original.status
+        except Material.DoesNotExist:
+            pass
+
 @receiver(post_save, sender=Material)
 def registrar_mudanca_custodia(sender, instance, created, **kwargs):
-    """
-    Gera rastro de auditoria automático para entradas e mudanças de lote.
-    """
     if created:
         RegistroHistorico.objects.create(
             material=instance,
@@ -15,9 +26,10 @@ def registrar_mudanca_custodia(sender, instance, created, **kwargs):
             status_na_epoca=instance.status,
             observacao=f"Entrada de material via BOU {instance.noticiado.ocorrencia.bou if instance.noticiado else 'N/A'}."
         )
-        # Verifica se deve criar lote automático
+    
+    original_status = _materiais_original_status.pop(instance.pk, None)
+    if original_status != instance.status and instance.status == 'AUTORIZADO':
         verificar_criacao_lote_automatico(instance)
-    # Update - o registro já é feito manualmente nas Views para capturar o request.user
 
 
 def verificar_criacao_lote_automatico(material):
@@ -98,4 +110,4 @@ def criar_lote_automatico():
                 observacao=f"LOTE AUTOMÁTICO gerado com {len(processos_list)} processos. Lote: {lote.identificador}"
             )
     
-    print(f"[LOTE AUTO] Lote {lote.identificador} criado com {sum(len(processos[p]) for p in processos_list)} materiais de {len(processos_list)} processos.")
+    logger.info(f"[LOTE AUTO] Lote {lote.identificador} criado com {sum(len(processos[p]) for p in processos_list)} materiais de {len(processos_list)} processos.")

@@ -1,4 +1,5 @@
 import os
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes as perm_classes
 from rest_framework.response import Response
@@ -6,6 +7,8 @@ from rest_framework.permissions import AllowAny
 from django.db.models import Count, Sum, Q, F
 from django.db.models.functions import TruncMonth, TruncYear, ExtractMonth, ExtractYear
 from .models import Ocorrencia, Noticiado, Material, RegistroHistorico, LoteIncineracao, NaturezaPenal, EquipePM, CATEGORIA_CHOICES, DROGAS_CHOICES, STATUS_CUSTODIA_CHOICES, VARA_CHOICES
+
+logger = logging.getLogger(__name__)
 from .api_serializers import (
     OcorrenciaSerializer, NoticiadoSerializer, MaterialSerializer, LoteIncineracaoSerializer,
     NaturezaPenalSerializer, EquipePMSerializer
@@ -13,7 +16,8 @@ from .api_serializers import (
 from .api_filters import MaterialFilter
 from .documentos_services import (
     gerar_oficio_materiais_gerais, gerar_recibo_entrada_pdf, 
-    gerar_capa_lote_pdf, gerar_relatorio_filtrado_pdf
+    gerar_capa_lote_pdf, gerar_relatorio_filtrado_pdf,
+    gerar_recibo_entrega_unico
 )
 from django.conf import settings
 
@@ -21,19 +25,20 @@ def get_auth_user(request):
     return request.user if request.user.is_authenticated else None
 
 class OcorrenciaViewSet(viewsets.ModelViewSet):
-    queryset = Ocorrencia.objects.all().order_by('-data_criacao')
+    queryset = Ocorrencia.objects.all().order_by('-data_criacao').prefetch_related(
+        'noticiados', 'noticiados__materiais'
+    )
     serializer_class = OcorrenciaSerializer
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-        print(f"[DEBUG] POST data: {request.data}")
         try:
             serializer = self.get_serializer(data=request.data)
             if not serializer.is_valid():
-                print(f"[DEBUG] Validation errors: {serializer.errors}")
+                logger.debug(f"Validation errors: {serializer.errors}")
             return super().create(request, *args, **kwargs)
         except Exception as e:
-            print(f"[DEBUG] Exception: {e}")
+            logger.error(f"Erro ao criar ocorrência: {e}")
             raise
 
     def perform_create(self, serializer):
@@ -61,7 +66,7 @@ class OcorrenciaViewSet(viewsets.ModelViewSet):
             return Response({"error": "BOU não encontrado."}, status=404)
 
 class NoticiadoViewSet(viewsets.ModelViewSet):
-    queryset = Noticiado.objects.all()
+    queryset = Noticiado.objects.all().select_related('ocorrencia', 'criado_por').prefetch_related('materiais')
     serializer_class = NoticiadoSerializer
     permission_classes = [AllowAny]
 
@@ -69,7 +74,9 @@ class NoticiadoViewSet(viewsets.ModelViewSet):
         serializer.save(criado_por=get_auth_user(self.request))
 
 class MaterialViewSet(viewsets.ModelViewSet):
-    queryset = Material.objects.all().order_by('-data_criacao')
+    queryset = Material.objects.select_related(
+        'noticiado__ocorrencia', 'lote', 'criado_por'
+    ).prefetch_related('historico').order_by('-data_criacao')
     serializer_class = MaterialSerializer
     permission_classes = [AllowAny]
     filterset_class = MaterialFilter
@@ -228,6 +235,201 @@ class MaterialViewSet(viewsets.ModelViewSet):
             status_na_epoca=material.status,
             observacao="Material recebido pelo cartório."
         )
+
+    @action(detail=False, methods=['get'])
+    def relatorio_completo(self, request):
+        """
+        Retorna dados completos para relatório PDF respeitando TODOS os filtros aplicados.
+        Endpoint: GET /api/materiais/relatorio_completo/?categoria=X&ano=X&...
+        """
+        from django.db.models import DecimalField
+        from django.db.models.functions import Coalesce
+        
+        qs = self.filter_queryset(self.get_queryset())
+        
+        # Captura os filtros aplicados para exibição
+        filtros_aplicados = {}
+        for key in ['categoria', 'substancia', 'status', 'vara', 'natureza_penal', 
+                     'data_inicio', 'data_fim', 'data_bou_inicio', 'data_bou_fim',
+                     'ano', 'semestre', 'unidade_origem', 'palavra_chave']:
+            val = request.query_params.get(key)
+            if val:
+                filtros_aplicados[key] = val
+        
+        # Contagens principais
+        total_materiais = qs.count()
+        total_noticiados = qs.values('noticiado').distinct().count()
+        Bous_unicos = qs.values('noticiado__ocorrencia__bou').distinct().count()
+        
+        # Por Categoria
+        por_categoria = list(
+            qs.values('categoria')
+            .annotate(total=Count('id'), peso=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))
+            .order_by('-total')
+        )
+        cat_map = dict(CATEGORIA_CHOICES)
+        for item in por_categoria:
+            item['label'] = cat_map.get(item['categoria'], item['categoria'])
+            item['peso'] = float(item['peso'] or 0)
+        
+        # Por Substância (apenas entorpecentes)
+        por_substancia = list(
+            qs.filter(categoria='ENTORPECENTE')
+            .values('substancia')
+            .annotate(
+                total=Count('id'), 
+                peso=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField()))
+            )
+            .order_by('-total')
+        )
+        subst_map = dict(DROGAS_CHOICES)
+        for item in por_substancia:
+            item['label'] = subst_map.get(item['substancia'], item['substancia'] or 'Não especificada')
+            item['peso'] = float(item['peso'] or 0)
+        
+        # Por Status
+        por_status = list(
+            qs.values('status')
+            .annotate(total=Count('id'))
+            .order_by('-total')
+        )
+        status_map = dict(STATUS_CUSTODIA_CHOICES)
+        for item in por_status:
+            item['label'] = status_map.get(item['status'], item['status'])
+        
+        # Por Vara
+        por_vara = list(
+            qs.values('noticiado__ocorrencia__vara')
+            .annotate(total=Count('id'))
+            .order_by('-total')
+        )
+        vara_map = dict(VARA_CHOICES)
+        for item in por_vara:
+            item['label'] = vara_map.get(item['noticiado__ocorrencia__vara'], item['noticiado__ocorrencia__vara'] or 'Não definida')
+        
+        # Por Natureza Penal
+        por_natureza = list(
+            qs.filter(noticiado__ocorrencia__natureza_penal__isnull=False)
+            .exclude(noticiado__ocorrencia__natureza_penal='')
+            .values('noticiado__ocorrencia__natureza_penal')
+            .annotate(total=Count('id'))
+            .order_by('-total')[:20]
+        )
+        for item in por_natureza:
+            item['natureza'] = item.pop('noticiado__ocorrencia__natureza_penal', 'Não definida')
+        
+        # Por Unidade PM (ranking)
+        por_unidade = list(
+            qs.values('noticiado__ocorrencia__unidade_origem')
+            .annotate(
+                total=Count('id'),
+                Bous=Count('noticiado__ocorrencia__bou', distinct=True)
+            )
+            .order_by('-total')[:15]
+        )
+        for item in por_unidade:
+            item['unidade'] = item.pop('noticiado__ocorrencia__unidade_origem', 'N/I')
+        
+        # Por Mês
+        por_mes = list(
+            qs.annotate(
+                mes=TruncMonth('noticiado__ocorrencia__data_registro_bou')
+            )
+            .values('mes')
+            .annotate(total=Count('id'))
+            .order_by('mes')
+        )
+        for item in por_mes:
+            if item['mes']:
+                item['mes_label'] = item['mes'].strftime('%B/%Y')
+                item['mes_num'] = item['mes'].month
+                item['ano'] = item['mes'].year
+                item['mes'] = item['mes'].isoformat()
+        
+        # Resumo geral
+        peso_total = float(
+            qs.filter(categoria='ENTORPECENTE')
+            .aggregate(total=Sum(Coalesce('peso_real', 'peso_estimado', output_field=DecimalField())))['total'] or 0
+        )
+        
+        return Response({
+            'filtros_aplicados': filtros_aplicados,
+            'resumo': {
+                'total_materiais': total_materiais,
+                'total_noticiados': total_noticiados,
+                'total_bous': Bous_unicos,
+                'peso_total_gramas': peso_total,
+            },
+            'por_categoria': por_categoria,
+            'por_substancia': por_substancia,
+            'por_status': por_status,
+            'por_vara': [{'label': vara_map.get(v.get('noticiado__ocorrencia__vara', ''), v.get('noticiado__ocorrencia__vara', 'N/I') or 'N/I'), 'total': v['total']} for v in por_vara],
+            'por_natureza': por_natureza,
+            'por_unidade': por_unidade,
+            'por_mes': por_mes,
+        })
+    
+    @action(detail=False, methods=['get'])
+    def relatorio_detalhado(self, request):
+        """
+        Retorna dados detalhados para relatório por natureza/substância específica.
+        """
+        from django.db.models import DecimalField
+        from django.db.models.functions import Coalesce
+        
+        qs = self.filter_queryset(self.get_queryset())
+        tipo = request.query_params.get('tipo', 'substancia')  # substancia, natureza, objeto, unidade
+        
+        if tipo == 'substancia':
+            dados = list(
+                qs.filter(categoria='ENTORPECENTE')
+                .select_related('noticiado__ocorrencia')
+                .values(
+                    'substancia', 'numero_lacre', 'peso_real', 'peso_estimado', 'unidade',
+                    'noticiado__nome', 'noticiado__ocorrencia__bou',
+                    'noticiado__ocorrencia__vara', 'noticiado__ocorrencia__natureza_penal',
+                    'noticiado__ocorrencia__unidade_origem', 'noticiado__ocorrencia__policial_nome'
+                )
+                .order_by('substancia', '-noticiado__ocorrencia__data_registro_bou')
+            )
+        elif tipo == 'natureza':
+            dados = list(
+                qs.filter(noticiado__ocorrencia__natureza_penal__isnull=False)
+                .exclude(noticiado__ocorrencia__natureza_penal='')
+                .select_related('noticiado__ocorrencia')
+                .values(
+                    'noticiado__ocorrencia__natureza_penal', 'numero_lacre', 'peso_real', 'peso_estimado',
+                    'noticiado__nome', 'noticiado__ocorrencia__bou',
+                    'noticiado__ocorrencia__vara', 'noticiado__ocorrencia__unidade_origem'
+                )
+                .order_by('noticiado__ocorrencia__natureza_penal', '-noticiado__ocorrencia__data_registro_bou')
+            )
+        elif tipo == 'objeto':
+            dados = list(
+                qs.filter(categoria__in=['SOM', 'FACA', 'SIMULACRO', 'OUTROS'])
+                .select_related('noticiado__ocorrencia')
+                .values(
+                    'categoria', 'descricao_geral', 'numero_lacre',
+                    'noticiado__nome', 'noticiado__ocorrencia__bou',
+                    'noticiado__ocorrencia__vara', 'noticiado__ocorrencia__unidade_origem'
+                )
+                .order_by('categoria', '-noticiado__ocorrencia__data_registro_bou')
+            )
+        else:
+            dados = []
+        
+        # Agregados
+        total = len(dados)
+        Bous = len(set(d.get('noticiado__ocorrencia__bou') for d in dados if d.get('noticiado__ocorrencia__bou')))
+        peso_total = sum(float(d.get('peso_real') or d.get('peso_estimado') or 0) for d in dados)
+        
+        return Response({
+            'tipo': tipo,
+            'total_itens': total,
+            'total_bous': Bous,
+            'peso_total': peso_total,
+            'dados': dados,
+        })
 
     def perform_update(self, serializer):
         user = get_auth_user(self.request)
@@ -431,15 +633,17 @@ class MaterialViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def gerar_oficio(self, request):
         ids_materiais = request.data.get('materiais_ids', [])
-        print(f"[DEBUG] IDs recebidos: {ids_materiais} (Tipo: {type(ids_materiais)})")
+        logger.debug(f"IDs recebidos: {ids_materiais} (Tipo: {type(ids_materiais)})")
         
-        materiais = Material.objects.filter(id__in=ids_materiais, categoria__in=['SOM', 'FACA', 'SIMULACRO', 'OUTROS'])
-        print(f"[DEBUG] Materiais encontrados: {materiais.count()}")
+        materiais = Material.objects.filter(
+            id__in=ids_materiais, 
+            categoria__in=['SOM', 'FACA', 'SIMULACRO', 'OUTROS']
+        ).select_related('noticiado__ocorrencia')
+        logger.debug(f"Materiais encontrados: {materiais.count()}")
         
         if not materiais.exists():
             return Response({"error": "Nenhum material geral selecionado válido."}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Gera o PDF via service
         pdf_path = gerar_oficio_materiais_gerais(materiais, get_auth_user(request))
         
         # Atualiza o status
@@ -558,8 +762,32 @@ class MaterialViewSet(viewsets.ModelViewSet):
         )
         return Response({"message": "Entrega confirmada e recibo armazenado!"})
 
+    @action(detail=True, methods=['get'])
+    def gerar_recibo_entrega(self, request, pk=None):
+        material = self.get_object()
+        caminho_relativo = gerar_recibo_entrega_unico(material, get_auth_user(request))
+        file_url = request.build_absolute_uri(settings.MEDIA_URL + caminho_relativo)
+        return Response({'url': file_url, 'message': 'Recibo gerado com sucesso!'})
+
+    @action(detail=False, methods=['post'])
+    def gerar_recibos_em_lote(self, request):
+        ids = request.data.get('materiais_ids', [])
+        if not ids:
+            return Response({"error": "Informe os IDs dos materiais."}, status=400)
+        
+        materiais = Material.objects.filter(id__in=ids).select_related('noticiado__ocorrencia')
+        urls = []
+        for mat in materiais:
+            caminho = gerar_recibo_entrega_unico(mat, get_auth_user(request))
+            file_url = request.build_absolute_uri(settings.MEDIA_URL + caminho)
+            urls.append({'id': mat.id, 'url': file_url})
+        
+        return Response({'recibos': urls, 'message': f'{len(urls)} recibo(s) gerado(s)!'})
+
 class LoteIncineracaoViewSet(viewsets.ModelViewSet):
-    queryset = LoteIncineracao.objects.all().order_by('-data_criacao')
+    queryset = LoteIncineracao.objects.select_related('criado_por').prefetch_related(
+        'materiais__noticiado__ocorrencia'
+    ).order_by('-data_criacao')
     serializer_class = LoteIncineracaoSerializer
     permission_classes = [AllowAny]
 
@@ -568,8 +796,10 @@ class LoteIncineracaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def gerar_lotes_automaticos(self, request):
-        # Seleciona drogas que o Juiz já autorizou (AUTORIZADO)
-        materiais = Material.objects.filter(status='AUTORIZADO', categoria='ENTORPECENTE').order_by('data_criacao')
+        materiais = Material.objects.filter(
+            status='AUTORIZADO', 
+            categoria='ENTORPECENTE'
+        ).select_related('noticiado__ocorrencia', 'criado_por').order_by('data_criacao')
         
         processos = {}
         for mat in materiais:
@@ -750,16 +980,110 @@ class LoteIncineracaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def imprimir_certidao_por_vara(self, request):
-        """Gera uma certidão de incineração agrupando todos os lotes ABERTOS por Vara"""
-        lotes_abertos = LoteIncineracao.objects.filter(status='ABERTO')
-        if not lotes_abertos.exists():
+        """Gera certidão de incineração ANTES da queima - retorna PDF direto"""
+        from django.http import FileResponse
+        
+        lote_ids = request.query_params.getlist('lote_ids')
+        
+        if lote_ids:
+            lotes = LoteIncineracao.objects.filter(id__in=lote_ids, status='ABERTO')
+        else:
+            lotes = LoteIncineracao.objects.filter(status='ABERTO')
+        
+        if not lotes.exists():
             return Response({"error": "Nenhum lote aberto encontrado."}, status=400)
-            
-        from .documentos_services import gerar_certidao_incineracao_coletiva
-        filename = gerar_certidao_incineracao_coletiva(lotes_abertos, get_auth_user(request))
+        
+        from .documentos_services import gerar_certidao_incineracao_antecipada
+        filename, _ = gerar_certidao_incineracao_antecipada(lotes, get_auth_user(request))
+        
+        caminho_completo = os.path.join(settings.MEDIA_ROOT, 'incineracao', filename)
+        
+        return FileResponse(
+            open(caminho_completo, 'rb'),
+            as_attachment=True,
+            filename=f"certidao_por_vara_{timezone.now().strftime('%Y%m%d')}.pdf"
+        )
+
+    @action(detail=False, methods=['get'])
+    def imprimir_certidao_antecipada(self, request):
+        """Gera certidão de incineração ANTES da queima para assinatura"""
+        lote_ids = request.query_params.getlist('lote_ids')
+        
+        if lote_ids:
+            lotes = LoteIncineracao.objects.filter(id__in=lote_ids, status='ABERTO')
+        else:
+            lotes = LoteIncineracao.objects.filter(status='ABERTO')
+        
+        if not lotes.exists():
+            return Response({"error": "Nenhum lote aberto encontrado."}, status=400)
+        
+        from .documentos_services import gerar_certidao_incineracao_antecipada
+        filename, lote_info = gerar_certidao_incineracao_antecipada(lotes, get_auth_user(request))
         
         file_url = request.build_absolute_uri(settings.MEDIA_URL + f"incineracao/{filename}")
-        return Response({'url': file_url})
+        return Response({
+            'url': file_url, 
+            'lotes_info': lote_info,
+            'message': f'Certidão gerada para {lotes.count()} lote(s)'
+        })
+
+    @action(detail=True, methods=['post'])
+    def finalizar_lote_confirmado(self, request, pk=None):
+        """Finaliza lote APÓS incineração com termo assinado"""
+        lote = self.get_object()
+        
+        if lote.status == 'INCINERADO':
+            return Response({"error": "Lote ja foi finalizado."}, status=400)
+        
+        protocolo = request.data.get('protocolo', '')
+        
+        lote.status = 'INCINERADO'
+        lote.data_incineracao = timezone.now()
+        if protocolo:
+            lote.eprotocolo_geral = protocolo
+        lote.save()
+        
+        count = 0
+        for mat in lote.materiais.all():
+            mat.status = 'INCINERADO'
+            mat.save(update_fields=['status'])
+            RegistroHistorico.objects.create(
+                material=mat,
+                criado_por=get_auth_user(request),
+                status_na_epoca='INCINERADO',
+                observacao=f"Incineracao confirmada. Protocolo: {protocolo or 'N/I'}. Lote: {lote.identificador}"
+            )
+            count += 1
+        
+        return Response({
+            "message": f"Lote {lote.identificador} finalizado!",
+            "materiais_baixados": count
+        })
+
+    @action(detail=False, methods=['get'])
+    def imprimir_capa_lote(self, request):
+        """Imprime capa de um lote específico - retorna PDF direto"""
+        from django.http import FileResponse
+        
+        lote_id = request.query_params.get('lote_id')
+        if not lote_id:
+            return Response({"error": "Informe o ID do lote."}, status=400)
+        
+        try:
+            lote = LoteIncineracao.objects.get(id=lote_id)
+        except LoteIncineracao.DoesNotExist:
+            return Response({"error": "Lote nao encontrado."}, status=404)
+        
+        from .documentos_services import gerar_capa_lote_pdf
+        caminho_relativo = gerar_capa_lote_pdf(lote, get_auth_user(request))
+        caminho_completo = os.path.join(settings.MEDIA_ROOT, caminho_relativo.replace('/', os.sep))
+        
+        filename = f"capa_{lote.identificador}.pdf"
+        return FileResponse(
+            open(caminho_completo, 'rb'),
+            as_attachment=True,
+            filename=filename
+        )
 
     @action(detail=True, methods=['post'])
     def remover_material(self, request, pk=None):
