@@ -1,187 +1,164 @@
 {% extends "painel_base.html" %}
 {% load static %}
 
-{% block content %}
+{% block title %}Cofre & Custódia | 6º BPM{% endblock %}
+{% block breadcrumb %}CUSTÓDIA{% endblock %}
+{% block h1 %}Gestão do Cofre (Estoque){% endblock %}
+
+{% block extra_css %}
 <style>
-    .card { border-radius: 12px; }
-    .table thead { background-color: #f8f9fa; }
-    .badge-status { font-size: 0.70rem; padding: 0.5em 0.8em; font-weight: bold; }
-    .user-confirm-box {
-        background-color: #fff3cd;
-        border: 1px solid #ffeeba;
-        color: #856404;
+    .card-custodia {
+        border-radius: 20px;
+        border: 1px solid #f1f5f9;
+        background: white;
+        transition: all 0.2s;
+        margin-bottom: 1rem;
+    }
+    .card-custodia:hover {
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        border-color: var(--pmpr-gold-light);
+    }
+    .badge-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        padding: 0.35rem 0.7rem;
         border-radius: 8px;
     }
-    .tr-autorizado { background-color: #f0fff4 !important; } /* Verde bem claro para autorizados */
-    .table-hover tbody tr:hover { background-color: #f8fbff; }
-    .stats-card { border-left: 4px solid; }
 </style>
+{% endblock %}
 
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-safe2 text-success me-2"></i>Itens em Custódia (Cofre)
-            </h3>
-            <p class="text-muted mb-0">Gestão de materiais e controle de autorizações para incineração.</p>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 stats-card border-info">
-                <div class="card-body py-2">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 10px;">Total em Custódia</small>
-                    <h5 class="fw-bold mb-0">{{ itens.count }} Itens</h5>
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-premium p-3 border-0 shadow-sm bg-white">
+            <form method="GET" class="row g-2 align-items-center">
+                <div class="col-md-9 position-relative">
+                    <i data-lucide="search" class="position-absolute translate-middle-y top-50 start-0 ms-3 text-muted" width="18"></i>
+                    <input type="text" name="busca_bou" value="{{ request.GET.busca_bou }}" class="form-control border-0 bg-light p-3 ps-5 rounded-4" placeholder="Pesquisar por BOU, Lacre, Noticiado ou Prontuário...">
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 stats-card border-success">
-                <div class="card-body py-2">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 10px;">Prontos para Incineração</small>
-                    <h5 class="fw-bold mb-0 text-success">{{ total_autorizados|default:"0" }} Itens</h5>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <form method="GET" class="row g-2">
-                <div class="col-md-10">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="busca_bou" class="form-control border-start-0" 
-                               placeholder="Buscar por Nº BOU, Noticiado ou Lacre..." value="{{ request.GET.busca_bou }}">
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-dark w-100 fw-bold">
-                        <i class="bi bi-filter me-1"></i>Filtrar
-                    </button>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-pmpr w-100 py-3">Filtrar Base</button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">Data Entrada</th>
-                            <th>BOU</th>
-                            <th>Material / Noticiado</th>
-                            <th class="text-end">Peso Real</th>
-                            <th class="ps-5">Status Judicial</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in itens %}
-                        <tr class="{% if item.status == 'AUTORIZADO' %}tr-autorizado{% endif %}">
-                            <td class="ps-4 text-muted small">
-                                {{ item.noticiado.ocorrencia.data_registro|date:"d/m/Y" }}<br>
-                                <span style="font-size: 10px;">{{ item.noticiado.ocorrencia.vara }}</span>
-                            </td>
-                            <td class="fw-bold text-success">{{ item.noticiado.ocorrencia.bou }}</td>
-                            <td>
-                                <span class="badge bg-white text-dark border fw-bold mb-1">{{ item.get_substancia_display }}</span>
-                                <br><small class="text-muted text-uppercase">{{ item.noticiado.nome|truncatechars:35 }}</small>
-                            </td>
-                            <td class="fw-bold text-end">{{ item.peso_formatado }}</td>
-                            
-                            <td class="ps-5">
-                                {% if item.status == 'ARMAZENADO' %}
-                                    <span class="badge bg-info-subtle text-info border border-info-subtle badge-status">
-                                        <i class="bi bi-hourglass-split me-1"></i>AGUARDANDO PROJUDI
-                                    </span>
-                                {% elif item.status == 'AUTORIZADO' %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle badge-status">
-                                        <i class="bi bi-file-earmark-check me-1"></i>AUTORIZADO PARA INCINERAR
-                                    </span>
-                                {% endif %}
-                            </td>
+<div class="row g-3">
+    {% for item in itens %}
+    <div class="col-xl-4 col-md-6">
+        <div class="card card-custodia p-4 h-100 position-relative {% if item.status == 'AUTORIZADO' %}border-success border-opacity-25{% endif %}">
+            
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="p-3 rounded-4 
+                    {% if item.categoria == 'ENTORPECENTE' %}bg-danger bg-opacity-10 text-danger
+                    {% elif item.categoria == 'DINHEIRO' %}bg-warning bg-opacity-10 text-warning
+                    {% else %}bg-primary bg-opacity-10 text-primary{% endif %}">
+                    <i data-lucide="{% if item.categoria == 'ENTORPECENTE' %}beaker{% elif item.categoria == 'DINHEIRO' %}banknote{% else %}package{% endif %}" width="24"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark">{{ item.noticiado.ocorrencia.bou }}</h6>
+                    <small class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">{{ item.noticiado.ocorrencia.get_vara_display }}</small>
+                </div>
+            </div>
 
-                            <td class="text-center">
-                                <div class="btn-group shadow-sm">
-                                    {% if item.status == 'ARMAZENADO' %}
-                                        <button class="btn btn-sm btn-primary px-3" data-bs-toggle="modal" data-bs-target="#modalAutorizar{{ item.id }}">
-                                            <i class="bi bi-shield-check me-1"></i> Autorizar
-                                        </button>
-                                    {% else %}
-                                        <button class="btn btn-sm btn-success disabled">
-                                            <i class="bi bi-check2-all"></i> Pronto
-                                        </button>
-                                    {% endif %}
-                                    
-                                    <a href="{% url 'gerar_recibo' item.noticiado.ocorrencia.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Reimprimir Recibo">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+            <div class="bg-light rounded-4 p-3 mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Material</span>
+                    <span class="small fw-bold text-dark text-uppercase">{{ item.get_substancia_display|default:item.get_categoria_display }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Noticiado</span>
+                    <span class="small fw-bold text-dark text-uppercase text-truncate ms-3">{{ item.noticiado.nome }}</span>
+                </div>
+            </div>
 
-                        <div class="modal fade" id="modalAutorizar{{ item.id }}" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content shadow-lg border-0">
-                                    <form method="POST" action="{% url 'confirmar_autorizacao' item.id %}" class="form-autorizar">
-                                        {% csrf_token %}
-                                        <div class="modal-header bg-dark text-white">
-                                            <h5 class="modal-title fw-bold text-uppercase small">Liberação Projudi</h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body py-4">
-                                            <div class="p-3 rounded mb-3 border-start border-4 border-primary bg-light">
-                                                <h6 class="fw-bold mb-1">{{ item.get_substancia_display }}</h6>
-                                                <span class="badge bg-dark">PESO: {{ item.peso_formatado }}</span>
-                                                <div class="mt-2 small text-muted">BOU: <strong>{{ item.noticiado.ocorrencia.bou }}</strong></div>
-                                            </div>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <small class="text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.75rem;">Lacre / Peso</small>
+                    <span class="fw-bold text-pmpr-green">#{{ item.numero_lacre|default:"S/L" }}</span>
+                    <span class="text-muted mx-1">|</span>
+                    <span class="fw-bold text-dark">{{ item.peso_formatado }}</span>
+                </div>
+                <div class="text-end">
+                    <span class="badge-label d-block mb-1
+                        {% if item.status == 'AGUARDANDO_INCINERACAO' %}bg-dark text-white
+                        {% elif item.status == 'AUTORIZADO' %}bg-success bg-opacity-10 text-success
+                        {% elif item.status == 'ARMAZENADO' %}bg-primary bg-opacity-10 text-primary
+                        {% else %}bg-secondary bg-opacity-10 text-dark{% endif %}">
+                        {{ item.get_status_display }}
+                    </span>
+                    {% if item.lote %}
+                    <small class="text-muted fw-black text-uppercase shadow-sm bg-light px-2 py-1 rounded-2 border" style="font-size: 0.6rem;">Lote: {{ item.lote.identificador }}</small>
+                    {% endif %}
+                </div>
+            </div>
 
-                                            <p class="text-muted small">Ao confirmar, este item será marcado como <b>Autorizado para Destruição</b>. Esta ação fica registrada no histórico do seu usuário.</p>
-                                            
-                                            <div class="user-confirm-box p-3 text-center mb-2">
-                                                <small class="d-block text-uppercase fw-bold opacity-75" style="font-size: 10px;">Responsável pela Conferência:</small>
-                                                <div class="d-flex align-items-center justify-content-center mt-1">
-                                                    <i class="bi bi-person-badge fs-4 me-2"></i>
-                                                    <span class="fw-bold fs-5 text-uppercase">{{ request.user.username }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer border-0 bg-light">
-                                            <button type="button" class="btn btn-link text-secondary text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-success fw-bold px-4 btn-confirmar">
-                                                CONFIRMAR DESPACHO
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <i class="bi bi-inbox fs-1 text-muted opacity-25 d-block mb-3"></i>
-                                <span class="text-muted fw-bold">Nenhum item localizado no cofre.</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="mt-auto d-flex gap-2 border-top pt-3">
+                <a href="{% url 'gerar_recibo' item.noticiado.ocorrencia.id %}" target="_blank" class="btn btn-light btn-sm flex-grow-1 rounded-3">
+                    <i data-lucide="file-text" width="14" class="me-1"></i> Recibo
+                </a>
+                {% if item.status == 'ARMAZENADO' %}
+                <button type="button" onclick="openModal('{{ item.id }}', '{{ item.noticiado.ocorrencia.bou }}', '{{ item.noticiado.nome }}')" class="btn btn-outline-success btn-sm flex-grow-1 rounded-3">
+                    <i data-lucide="check-circle" width="14" class="me-1"></i> Autorizar Queima
+                </button>
+                {% endif %}
+                {% if item.status == 'AGUARDANDO_INCINERACAO' %}
+                <div class="btn btn-dark btn-sm flex-grow-1 rounded-3 disabled opacity-75">
+                    <i data-lucide="flame" width="14" class="me-1"></i> Em Lote
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-10">
+        <div class="opacity-25 mb-4"><i data-lucide="inbox" width="64" height="64"></i></div>
+        <h5 class="text-muted fw-bold text-uppercase">Nenhum registro encontrado no cofre.</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Liberação -->
+<div class="modal fade" id="modalLibera" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-5 shadow-lg overflow-hidden">
+            <div class="bg-pmpr-green p-4 text-white d-flex align-items-center gap-3">
+                <i data-lucide="shield-check"></i>
+                <h5 class="mb-0 fw-bold">Confirmar Autorização Judicial</h5>
+            </div>
+            <div class="modal-body p-5">
+                <div class="bg-light p-4 rounded-4 mb-4">
+                    <h6 id="modalBou" class="fw-bold text-pmpr-green mb-1"></h6>
+                    <p id="modalNoticiado" class="text-muted small fw-bold text-uppercase mb-0"></p>
+                </div>
+                <div class="alert alert-warning border-0 rounded-4 p-4 mb-5">
+                    <p class="small fw-bold mb-0">Esta ação confirma que já existe uma ordem judicial no <strong>PROJUDI</strong> permitindo a incineração definitiva deste material.</p>
+                </div>
+                
+                <form id="formLibera" method="POST" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-pmpr w-100 py-3 mb-3 shadow-lg">Confirmar Autorização</button>
+                    <button type="button" class="btn btn-link w-100 text-muted small text-uppercase fw-bold text-decoration-none" data-bs-dismiss="modal">Fechar</button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Previne múltiplos cliques no botão de autorizar
-    document.querySelectorAll('.form-autorizar').forEach(form => {
-        form.onsubmit = function() {
-            const btn = this.querySelector('.btn-confirmar');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSANDO...';
-            }
-        };
-    });
+    function openModal(id, bou, noticiado) {
+        const modal = new bootstrap.Modal(document.getElementById('modalLibera'));
+        document.getElementById('modalBou').innerText = "BOU: " + bou;
+        document.getElementById('modalNoticiado').innerText = noticiado;
+        document.getElementById('formLibera').action = `/autorizar/${id}/`;
+        modal.show();
+    }
+    lucide.createIcons();
 </script>
 {% endblock %}

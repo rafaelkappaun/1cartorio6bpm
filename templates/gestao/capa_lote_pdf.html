@@ -64,7 +64,8 @@
     </div>
 
     <div class="resumo-lote">
-        <span>PROCESSOS: {{ materiais.count }}</span>
+        <span>PROCESSOS: {{ lote.processos_count }}</span>
+        <span>ITENS: {{ materiais.count }}</span>
         <span>PESO TOTAL: {{ peso_total|floatformat:3 }}g</span>
     </div>
 

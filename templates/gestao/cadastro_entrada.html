@@ -1,306 +1,348 @@
 {% extends "painel_base.html" %}
 {% load static %}
 
-{% block content %}
+{% block title %}Novo Registro | 6º BPM{% endblock %}
+{% block breadcrumb %}CADASTRO{% endblock %}
+{% block h1 %}Registro de Entrada{% endblock %}
+
+{% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://unpkg.com/imask"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+<style>
+    .card-entry {
+        background: white;
+        border-radius: 30px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        margin-bottom: 2rem;
+    }
+    .form-label-custom {
+        font-size: 0.75rem; /* Aumentado de 0.65rem */
+        text-transform: uppercase;
+        letter-spacing: 0.1em; /* Ajustado para leitura */
+        font-weight: 800;
+        color: #475569; /* Mais escuro (antes: #94a3b8) */
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .form-control-custom {
+        border-radius: 16px;
+        padding: 0.8rem 1.2rem;
+        border: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+        transition: all 0.2s;
+    }
+    .form-control-custom:focus {
+        background-color: white;
+        border-color: var(--pmpr-green);
+        box-shadow: 0 0 0 4px rgba(26, 58, 42, 0.1);
+        outline: none;
+    }
+    .item-row {
+        padding: 2rem;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.3s;
+    }
+    .item-row:hover {
+        background-color: #fdfdfd;
+    }
+    .btn-add {
+        border-radius: 14px;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: 2px dashed #e2e8f0;
+        color: #64748b;
+        background: white;
+        transition: all 0.2s;
+    }
+    .btn-add:hover {
+        border-color: var(--pmpr-green);
+        color: var(--pmpr-green);
+        background: #f0fdf4;
+    }
+    .bou-prefix {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-right: none;
+        border-radius: 16px 0 0 16px;
+        padding: 0 1rem;
+        display: flex;
+        align-items: center;
+        font-weight: 800;
+        color: #64748b;
+    }
+</style>
+{% endblock %}
 
-<div class="container-fluid py-4">
-    <form method="POST" action="{% url 'registrar' %}" id="formPrincipal" class="needs-validation" novalidate>
-        {% csrf_token %}
+{% block content %}
+<form method="POST" action="{% url 'registrar' %}" id="formPrincipal">
+    {% csrf_token %}
+    
+    <!-- Seção 1: Ocorrência -->
+    <div class="card card-entry overflow-hidden">
+        <div class="card-header bg-light bg-opacity-50 border-bottom p-4 d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3">
+                <i data-lucide="file-text"></i>
+            </div>
+            <h5 class="mb-0 fw-bold">Dados do Boletim</h5>
+        </div>
         
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-4 border-top border-4 border-success">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="fw-bold text-primary mb-0">
-                        <i class="bi bi-shield-check me-2"></i>1. DADOS DA OCORRÊNCIA E CUSTÓDIA
-                    </h6>
-                    <span class="badge bg-dark text-white p-2">
-    OPERADOR: {% if user.is_authenticated %}{{ user.get_full_name|upper|default:user.username|upper }}{% else %}SISTEMA{% endif %}
-</span>
+        <div class="card-body p-4 p-lg-5">
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <label class="form-label-custom">Data do Registro</label>
+                    <input type="text" name="data_registro" id="data_registro" class="form-control form-control-custom" required>
                 </div>
-
-                <div class="row g-3">
-                    <div class="col-md-2">
-                        <label class="form-label small fw-bold">Data do Fato *</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i></span>
-                            <input type="text" name="data_registro" id="data_registro" class="form-control" placeholder="00/00/0000" required>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Nº BOU (Ano/Sequência) *</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light fw-bold" id="ano_bou_prefix">0000/</span>
-                            <input type="text" name="bou_sequencia" id="bou_sequencia" class="form-control" 
-                                   placeholder="0000000" maxlength="10" required 
-                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                            <input type="hidden" name="bou" id="bou_completo">
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Nº PROJUDI (Processo)</label>
-                        <input type="text" name="processo" id="mask_projudi" class="form-control" placeholder="0000000-00.2026.8.16.0021">
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Vara Destino *</label>
-                        <select name="vara" class="form-select" required>
-                            <option value="" selected disabled>Selecione a Vara...</option>
-                            {% for valor, nome in VARA_CHOICES %}
-                                <option value="{{ valor }}">{{ nome }}</option>
-                            {% endfor %}
-                        </select>
+                <div class="col-md-3">
+                    <label class="form-label-custom">Número B.O.U</label>
+                    <div class="d-flex shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                        <span id="ano_bou_prefix" class="bou-prefix">2026/</span>
+                        <input type="text" name="bou_sequencia" id="bou_sequencia" class="form-control form-control-custom border-start-0" style="border-radius: 0 16px 16px 0;" placeholder="Digitar Número" required>
+                        <input type="hidden" name="bou" id="bou_completo">
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <label class="form-label-custom">Nº Projudi (Autos)</label>
+                    <input type="text" name="processo" id="mask_projudi" class="form-control form-control-custom" placeholder="0000000-00...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-custom">Vara Destino</label>
+                    <select name="vara" class="form-select form-control-custom" required>
+                        <option value="" disabled selected>Selecionar...</option>
+                        {% for valor, nome in VARA_CHOICES %}
+                            <option value="{{ valor }}">{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-                <div class="row g-3 mt-2">
-                    <div class="col-md-2">
-                        <label class="form-label small fw-bold">Unidade PM *</label>
-                        <select name="unidade_origem" class="form-select" required>
-                            <option value="" selected disabled>Selecione...</option>
-                            <option value="RPA">RPA</option>
-                            <option value="ROTAM">ROTAM</option>
-                            <option value="ROCAM">ROCAM</option>
-                            <option value="CHOQUE">CHOQUE</option>
-                            <option value="P2">P2</option>
-                            <option value="OUTRA">OUTRA</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label small fw-bold">RG do Policial *</label>
-                        <input type="text" name="rg_policial" class="form-control" placeholder="Apenas números" required
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label small fw-bold">Graduação</label>
-                        <select name="policial_graduacao" class="form-select">
-                            {% for valor, nome in GRADUACAO_CHOICES %}
-                                <option value="{{ valor }}">{{ nome }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Nome do Policial (Entregador) *</label>
-                        <input type="text" name="policial_nome" class="form-control text-uppercase" placeholder="NOME COMPLETO" required>
+            <div class="row g-4 mt-2">
+                <div class="col-md-3">
+                    <label class="form-label-custom">Unidade PM</label>
+                    <select name="unidade_origem" class="form-select form-control-custom" required>
+                        <option value="RPA">RPA</option>
+                        <option value="ROTAM">ROTAM</option>
+                        <option value="ROCAM">ROCAM</option>
+                        <option value="CHOQUE">CHOQUE</option>
+                        <option value="OUTRA">OUTRA</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <label class="form-label-custom">RG do Policial</label>
+                            <input type="text" name="rg_policial" class="form-control form-control-custom" placeholder="Somente Números" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label-custom">Nome do Policial Entregador</label>
+                            <input type="text" name="policial_nome" class="form-control form-control-custom text-uppercase" placeholder="Nome Completo" required>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-capslock-fill me-2"></i>2. NOTICIADOS E MATERIAIS</h6>
-                <button type="button" class="btn btn-primary btn-sm" id="btnAdicionar">
-                    <i class="bi bi-plus-lg me-1"></i> Adicionar Noticiado/Droga
-                </button>
+    <!-- Seção 2: Materiais Appreendidos -->
+    <div class="card card-entry overflow-hidden">
+        <div class="card-header bg-light bg-opacity-50 border-bottom p-4 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-3">
+                    <i data-lucide="package"></i>
+                </div>
+                <h5 class="mb-0 fw-bold">Materiais Apreendidos</h5>
             </div>
-            
-            <div class="card-body bg-light" id="container-noticiados">
-                <div class="row g-2 border rounded p-3 mb-3 bg-white item-noticiado shadow-sm">
-                    <div class="col-md-3">
-                        <label class="small fw-bold text-muted">Nome do Noticiado</label>
-                        <input type="text" name="nome_noticiado[]" class="form-control text-uppercase" placeholder="NOME DO PRESO" required>
+            <button type="button" id="btnAdicionar" class="btn btn-add">
+                <i data-lucide="plus" width="16" height="16" class="me-1"></i> Adicionar Item
+            </button>
+        </div>
+        
+        <div id="container-materiais">
+            <!-- Row Template -->
+            <div class="item-row">
+                <div class="row g-4 align-items-end">
+                    <div class="col-lg-3">
+                        <label class="form-label-custom">Proprietário / Noticiado</label>
+                        <input type="text" name="nome_noticiado[]" class="form-control form-control-custom text-uppercase" placeholder="Nome do Autor" required>
                     </div>
-
-                    <div class="col-md-3">
-                        <label class="small fw-bold text-muted">Substância *</label>
-                        <select name="substancia[]" class="form-select select-substancia" required>
-                            <option value="" selected disabled>Selecione...</option>
-                            {% for valor, nome in DROGAS_CHOICES %}
-                                <option value="{{ valor }}">{{ nome }}</option>
-                            {% endfor %}
+                    <div class="col-lg-2">
+                        <label class="form-label-custom">Categoria</label>
+                        <select name="categoria[]" class="form-select form-control-custom select-categoria" required>
+                            <option value="ENTORPECENTE" selected>Entorpecente</option>
+                            <option value="SOM">Ap. Som</option>
+                            <option value="ARMAS">Armas</option>
+                            <option value="DINHEIRO">Dinheiro</option>
+                            <option value="OUTROS">Outros</option>
                         </select>
                     </div>
-
-                    <div class="col-md-2">
-                        <label class="small fw-bold text-muted">Unidade *</label>
-                        <select name="unidade[]" class="form-select select-unidade-medida" required>
-                            <option value="G">Gramas (g)</option>
-                            <option value="KG">Quilos (kg)</option>
-                            <option value="UN">Unidades (Pés/Comp)</option>
-                        </select>
+                    <div class="col-lg-2">
+                        <label class="form-label-custom">Nº do Lacre</label>
+                        <input type="text" name="lacre[]" class="form-control form-control-custom fw-bold text-success" placeholder="Opcional">
+                    </div>
+                    
+                    <!-- Dinâmico -->
+                    <div class="col-lg-4">
+                        <div class="dynamic-fields">
+                            <div class="section-entorpecente">
+                                <div class="row g-2">
+                                    <div class="col-7">
+                                        <label class="form-label-custom">Substância</label>
+                                        <select name="substancia[]" class="form-select form-control-custom">
+                                            {% for v, n in DROGAS_CHOICES %}
+                                            <option value="{{ v }}">{{ n }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label-custom">Peso (g)</label>
+                                        <input type="text" name="peso_estimado[]" class="form-control form-control-custom mask-peso" placeholder="0,000">
+                                        <input type="hidden" name="unidade[]" value="G">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="section-geral d-none">
+                                <label class="form-label-custom">Descrição do Objeto</label>
+                                <input type="text" name="descricao_geral[]" class="form-control form-control-custom" placeholder="Marca, cor, etc...">
+                            </div>
+                            <div class="section-dinheiro d-none">
+                                <label class="form-label-custom">Valor (R$)</label>
+                                <input type="text" name="valor_monetario[]" class="form-control form-control-custom mask-dinheiro" placeholder="0,00">
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="col-md-2">
-                        <label class="small fw-bold text-muted">Peso/Qtd Est. *</label>
-                        <input type="text" name="peso_estimado[]" class="form-control mask-peso" placeholder="0,000" required>
-                    </div>
-
-                    <div class="col-md-1">
-                        <label class="small fw-bold text-muted">Nº Lacre</label>
-                        <input type="text" name="lacre[]" class="form-control">
-                    </div>
-
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button type="button" class="btn btn-outline-danger w-100 btn-remover" style="display:none;">
-                            <i class="bi bi-trash"></i>
+                    <div class="col-lg-1 text-end">
+                        <button type="button" class="btn btn-link text-danger p-0 btn-remover d-none" style="opacity: 0.5;">
+                            <i data-lucide="trash-2"></i>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-lg mb-5">
-            <i class="bi bi-save2 me-2"></i> FINALIZAR REGISTRO E GERAR RECIBO
+    <!-- Submit Section -->
+    <div class="d-flex justify-content-between align-items-center bg-pmpr-green p-5 rounded-5 shadow-lg text-white mt-5">
+        <div class="d-none d-md-flex align-items-center gap-4">
+            <div class="bg-white bg-opacity-10 p-3 rounded-4">
+                <i data-lucide="shield-check" width="32" height="32" class="text-pmpr-gold"></i>
+            </div>
+            <div>
+                <h6 class="mb-1 text-uppercase fw-bold" style="letter-spacing: 1px;">Termo de Confirmação</h6>
+                <p class="mb-0 small opacity-75">Ao salvar, você atesta a entrada fiel destes materiais no 6º BPM.</p>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-light px-5 py-3 rounded-4 fw-bold text-uppercase" style="letter-spacing: 1px;">
+            Registrar Entrada
         </button>
-    </form>
-</div>
+    </div>
+</form>
+
+<div style="height: 50px;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://unpkg.com/imask"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
 
 <script>
-    // 1. CALENDÁRIO DINÂMICO + LÓGICA DO BOU
-    const anoBouLabel = document.getElementById('ano_bou_prefix');
-    const bouSeqInput = document.getElementById('bou_sequencia');
-    const bouHidden = document.getElementById('bou_completo');
+    // Flatpickr & BOU Year
+    const anoLabel = document.getElementById('ano_bou_prefix');
+    const bSeqInput = document.getElementById('bou_sequencia');
+    const bHidden = document.getElementById('bou_completo');
 
-    // Define ano atual como padrão caso o usuário não escolha data
-    const anoPadrao = new Date().getFullYear();
-    anoBouLabel.innerText = anoPadrao + '/';
-
-    const fp = flatpickr("#data_registro", {
+    flatpickr("#data_registro", {
         locale: "pt",
         dateFormat: "Y-m-d",
         altInput: true,
         altFormat: "d/m/Y",
-        maxDate: "today",
-        onChange: function(selectedDates, dateStr) {
-            if (dateStr) {
-                const ano = dateStr.split('-')[0];
-                anoBouLabel.innerText = ano + '/';
-                atualizarBou();
-            }
+        defaultDate: "today",
+        onChange: (s, ds) => { 
+            if(ds) { 
+                const year = ds.split('-')[0];
+                anoLabel.innerText = year + '/';
+                updateBou();
+            } 
         }
     });
 
-    function atualizarBou() {
-        bouHidden.value = anoBouLabel.innerText + bouSeqInput.value;
-    }
-    bouSeqInput.addEventListener('input', atualizarBou);
+    function updateBou() { bHidden.value = (anoLabel.innerText || '') + bSeqInput.value; }
+    bSeqInput.addEventListener('input', updateBou);
+    
+    // Init default year
+    anoLabel.innerText = new Date().getFullYear() + '/';
+    updateBou();
 
-    // 2. MÁSCARAS E REGRAS POR LINHA
-    const mascarasAtivas = new Map();
+    // Masking
+    function applyMasks(row) {
+        const p = row.querySelector('.mask-peso');
+        const d = row.querySelector('.mask-dinheiro');
+        const proj = document.getElementById('mask_projudi');
 
-    function aplicarMascara(input) {
-        const row = input.closest('.item-noticiado');
-        const unidade = row.querySelector('.select-unidade-medida').value;
-        
-        if (mascarasAtivas.has(input)) { mascarasAtivas.get(input).destroy(); }
-
-        let config = (unidade === 'UN') 
-            ? { mask: Number, scale: 0, thousandsSeparator: '' }
-            : { mask: Number, scale: 3, radix: ',', mapToRadix: ['.'], padFractionalZeros: true, thousandsSeparator: '.' };
-        
-        mascarasAtivas.set(input, IMask(input, config));
+        if(p) IMask(p, { mask: Number, scale: 3, radix: ',', thousandsSeparator: '.', padFractionalZeros: true, mapToRadix: ['.'] });
+        if(d) IMask(d, { mask: Number, scale: 2, radix: ',', thousandsSeparator: '.', padFractionalZeros: true, mapToRadix: ['.'] });
+        if(proj) IMask(proj, { mask: '0000000-00.0000.8.16.0000' });
     }
 
-    function monitorarLinha(row) {
-        const selectSubstancia = row.querySelector('.select-substancia');
-        const selectUnidade = row.querySelector('.select-unidade-medida');
-        const inputPeso = row.querySelector('.mask-peso');
+    // Row Setup
+    function setupRow(row) {
+        const select = row.querySelector('.select-categoria');
+        const ent = row.querySelector('.section-entorpecente');
+        const ger = row.querySelector('.section-geral');
+        const din = row.querySelector('.section-dinheiro');
 
-        selectSubstancia.addEventListener('change', function() {
-            // Se for planta/pé de maconha, trava em Unidade (UN)
-            if (this.value === 'PE_MACONHA') {
-                selectUnidade.value = 'UN';
-                selectUnidade.classList.add('bg-light');
-                selectUnidade.style.pointerEvents = "none";
-            } else {
-                selectUnidade.classList.remove('bg-light');
-                selectUnidade.style.pointerEvents = "auto";
-            }
-            inputPeso.value = '';
-            aplicarMascara(inputPeso);
+        select.addEventListener('change', () => {
+            ent.classList.add('d-none'); ger.classList.add('d-none'); din.classList.add('d-none');
+            if(select.value === 'ENTORPECENTE') ent.classList.remove('d-none');
+            else if(select.value === 'DINHEIRO') din.classList.remove('d-none');
+            else ger.classList.remove('d-none');
         });
 
-        selectUnidade.addEventListener('change', () => {
-            inputPeso.value = '';
-            aplicarMascara(inputPeso);
-        });
-
-        aplicarMascara(inputPeso);
+        applyMasks(row);
+        lucide.createIcons();
     }
 
-    // Inicialização de Máscaras Fixas
-    IMask(document.getElementById('mask_projudi'), { mask: '0000000-00.0000.8.16.0000' });
-    document.querySelectorAll('.item-noticiado').forEach(monitorarLinha);
+    // Init first row
+    document.querySelectorAll('.item-row').forEach(setupRow);
 
-    // 3. ADICIONAR/REMOVER LINHAS
-    document.getElementById('btnAdicionar').addEventListener('click', function() {
-        const container = document.getElementById('container-noticiados');
-        const novaLinha = container.querySelector('.item-noticiado').cloneNode(true);
-        
-        novaLinha.querySelectorAll('input').forEach(i => i.value = '');
-        novaLinha.querySelector('.btn-remover').style.display = 'block';
-        
-        container.appendChild(novaLinha);
-        monitorarLinha(novaLinha);
+    // Add Row
+    document.getElementById('btnAdicionar').addEventListener('click', () => {
+        const container = document.getElementById('container-materiais');
+        const firstRow = container.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        newRow.querySelectorAll('input').forEach(i => i.value = '');
+        newRow.querySelector('.btn-remover').classList.remove('d-none');
+        container.appendChild(newRow);
+        setupRow(newRow);
     });
 
+    // Remove Row
     document.addEventListener('click', e => {
         const btn = e.target.closest('.btn-remover');
-        if (btn) {
+        if(btn) {
             Swal.fire({
-                title: 'Remover Noticiado?',
-                text: "Os dados desta linha serão perdidos.",
-                icon: 'warning',
+                title: 'Remover?',
+                text: 'Deseja excluir este item do registro?',
+                icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Sim, remover'
-            }).then((result) => { 
-                if (result.isConfirmed) {
-                    btn.closest('.item-noticiado').remove(); 
-                }
-            });
+                confirmButtonColor: '#1a3a2a',
+                confirmButtonText: 'Sim'
+            }).then(r => { if(r.isConfirmed) btn.closest('.item-row').remove(); });
         }
     });
 
-    // 4. SUBMIT E LIMPEZA (Ponto Crítico)
-    document.getElementById('formPrincipal').addEventListener('submit', function(e) {
-        if (!this.checkValidity()) {
-            e.preventDefault();
-            Swal.fire({ title: 'Atenção', text: 'Preencha os campos obrigatórios (*)', icon: 'error' });
-            return;
-        }
-
-        // Antes de enviar ao Django, limpamos o peso
-        document.querySelectorAll('.mask-peso').forEach(input => {
-            const mask = mascarasAtivas.get(input);
-            if (mask) {
-                // Remove pontos de milhar, mantém a vírgula decimal
-                // O Django fará: float(valor.replace(',', '.'))
-                const valorLimpoParaPython = mask.value.replace(/\./g, '');
-                input.value = valorLimpoParaPython;
-            }
+    // Submit Handling
+    document.getElementById('formPrincipal').addEventListener('submit', function() {
+        updateBou();
+        this.querySelectorAll('.mask-peso, .mask-dinheiro').forEach(i => {
+            i.value = i.value.replace(/\./g, '').replace(',', '.');
         });
-        
-        atualizarBou();
     });
-
-    // Mensagens de Erro/Sucesso vindas do Django
-    {% if messages %}
-        {% for message in messages %}
-            Swal.fire({ 
-                title: 'Sistema informa:', 
-                text: "{{ message }}", 
-                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}" 
-            });
-        {% endfor %}
-    {% endif %}
 </script>
-
-<style>
-    .item-noticiado { border-left: 5px solid #198754 !important; transition: all 0.2s; }
-    .item-noticiado:hover { border-left-color: #0d6efd !important; border-color: #ddd; }
-    .form-control:focus, .form-select:focus { border-color: #198754; box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); }
-    .flatpickr-input[readonly] { background-color: #fff !important; }
-</style>
 {% endblock %}

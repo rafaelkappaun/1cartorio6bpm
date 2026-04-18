@@ -1,0 +1,236 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Espelho da Caixa - 6º BPM</title>
+    <style>
+        @media print { 
+            .no-print { display: none; } 
+            body { margin: 0; padding: 20px; }
+            .box-caixa { border: 3px double #000; padding: 25px; }
+        }
+        body { 
+            font-family: 'Arial', sans-serif; 
+            color: #000; 
+            line-height: 1.5; 
+            background: #fff;
+            font-size: 14px;
+        }
+        .box-caixa { 
+            border: 4px double #000; 
+            padding: 30px; 
+            min-height: 95vh; 
+            position: relative; 
+        }
+        .header { 
+            text-align: center; 
+            border-bottom: 3px solid #000; 
+            padding-bottom: 15px; 
+            margin-bottom: 25px; 
+        }
+        .brasao { height: 90px; margin-bottom: 8px; }
+
+        .identificador-caixa { 
+            font-size: 32px; 
+            font-weight: bold; 
+            text-align: center; 
+            background-color: #1a3a2a; 
+            color: #fff; 
+            padding: 20px;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+
+        .resumo-caixa { 
+            display: flex; 
+            justify-content: space-around; 
+            font-size: 18px; 
+            font-weight: bold; 
+            margin-bottom: 25px;
+            border: 2px solid #000;
+            padding: 18px;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px;
+            page-break-inside: avoid;
+        }
+        th, td { 
+            border: 1px solid #000; 
+            padding: 10px; 
+            text-align: left; 
+            font-size: 13px; 
+        }
+        th { 
+            background-color: #1a3a2a; 
+            color: #fff; 
+            text-transform: uppercase; 
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .footer-assinatura { 
+            margin-top: 60px; 
+            display: flex; 
+            justify-content: space-around; 
+        }
+        .assinatura-box { 
+            text-align: center; 
+            width: 45%; 
+            border-top: 2px solid #000; 
+            padding-top: 10px; 
+            font-size: 14px; 
+        }
+
+        .timestamp { 
+            position: absolute; 
+            bottom: 15px; 
+            right: 25px; 
+            font-size: 12px; 
+            font-style: italic; 
+        }
+
+        .vara-section { 
+            margin-top: 20px; 
+            page-break-inside: avoid;
+        }
+        .vara-header { 
+            background: #e8e8e8; 
+            padding: 12px; 
+            font-weight: bold; 
+            border: 2px solid #000; 
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box-caixa">
+    <div class="header">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+            <img src="{% static 'img/brasao_parana.svg' %}" class="brasao" alt="Paraná" style="height: 70px;">
+            <div>
+                <div style="font-size: 16px; font-weight: bold;">POLÍCIA MILITAR DO PARANÁ</div>
+                <div style="font-size: 14px;">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL</div>
+                <div style="font-size: 14px; font-weight: bold;">SEÇÃO DE CUSTÓDIA DE ENTORPECENTES</div>
+            </div>
+            <img src="{% static 'img/brasao_pmpr.svg' %}" class="brasao" alt="PMPR" style="height: 70px;">
+        </div>
+    </div>
+
+    <div class="identificador-caixa">
+        ESPELHO DE CAIXA DE INCINERAÇÃO<br>
+        {{ caixa.identificador }} / 
+        {% if caixa.data_criacao.month <= 6 %}1º{% else %}2º{% endif %} SEMESTRE / 
+        {{ caixa.data_criacao.year }}
+    </div>
+
+    <div class="resumo-caixa">
+        <span>CAIXA: {{ caixa.identificador }}</span>
+        <span>LOTES: {{ lotes_list|length }}</span>
+        <span>PROCESSOS: {{ processos_unicos_count }}</span>
+        <span>ITENS: {{ total_itens }}</span>
+        <span>PESO: {% if total_peso >= 1000 %}{{ total_peso|stringformat:"0.0f"|slice:":-3" }},{{ total_peso|stringformat:"0.0f"|slice:"-3" }} kg{% else %}{{ total_peso|stringformat:"0.0f"|slice:":-3" }},{{ total_peso|stringformat:"0.0f"|slice:"-3" }} g{% endif %}</span>
+    </div>
+
+    <!-- Lista de Lotes na Caixa -->
+    <div style="margin-bottom: 20px;">
+        <h5 style="background: #f0f0f0; padding: 8px; border: 1px solid #000; margin: 0;">LOTES CONTIDOS NESTA CAIXA</h5>
+        <table>
+            <thead>
+                <tr>
+                    <th>Lote</th>
+                    <th>Data Formação</th>
+                    <th>Processos</th>
+                    <th>Itens</th>
+                    <th>Peso Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in lotes_list %}
+                <tr>
+                    <td><strong>{{ item.lote.identificador }}</strong></td>
+                    <td>{{ item.lote.data_criacao|date:"d/m/Y H:i" }}</td>
+                    <td>{{ item.lote.processos_count }}</td>
+                    <td>{{ item.materiais_count }}</td>
+                    <td>{% if item.peso >= 1000 %}{{ item.peso|floatformat:"2" }}kg{% else %}{{ item.peso|floatformat:"2" }}g{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detalhamento por Vara (Ordenado por Noticiado) -->
+    {% for vara_nome, materiais_vara in por_vara.items %}
+    <div class="vara-section">
+        <div class="vara-header">{{ vara_nome }} ({{ materiais_vara|length }} itens)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="3%">#</th>
+                    <th width="22%">NOTICIADO</th>
+                    <th width="10%">PROCESSO</th>
+                    <th width="10%">BOU</th>
+                    <th width="12%">LOTE</th>
+                    <th width="15%">SUBSTÂNCIA</th>
+                    <th width="8%">PESO</th>
+                    <th width="10%">LACRE</th>
+                    <th width="10%">OBSERVAÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in materiais_vara %}
+                {% with mat=item.material %}
+                <tr>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td style="font-weight: bold;">{{ item.noticiado_nome }}</td>
+                    <td>{{ item.processo|default:"-" }}</td>
+                    <td>{{ item.bou }}</td>
+                    <td style="font-weight: bold;">{{ item.lote_identificador }}</td>
+                    <td>{{ mat.get_substancia_display }}</td>
+                    <td style="text-align: right;">{% if mat.peso_real %}{{ mat.peso_real|floatformat:2 }}g{% else %}{{ mat.peso_estimado|floatformat:2 }}g{% endif %}</td>
+                    <td>{{ mat.numero_lacre|default:"-" }}</td>
+                    <td style="font-size: 9px;">{{ mat.observacao|default:"" }}</td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top: 40px; font-size: 11px; text-align: justify; border: 1px solid #000; padding: 10px; background: #f9f9f9;">
+        <strong>CERTIDÃO DE CONFERÊNCIA:</strong> Certifico que os materiais acima relacionados foram conferidos fisicamente 
+        em conformidade com o BOU e as decisões judiciais, organizados em {{ lotes_list|length }} lote(s) contido(s) nesta caixa. 
+        O peso total aproximado é de <strong>{% if total_peso >= 1000 %}{{ total_peso|stringformat:"0.0f"|slice:":-3" }},{{ total_peso|stringformat:"0.0f"|slice:"-3" }} kg{% else %}{{ total_peso|stringformat:"0.0f"|slice:":-3" }},{{ total_peso|stringformat:"0.0f"|slice:"-3" }} g{% endif %}</strong>.
+    </div>
+
+    <div class="footer-assinatura">
+        <div class="assinatura-box">
+            <strong>_______________________________</strong><br>
+            Encarregado da Custódia - 6º BPM
+        </div>
+        <div class="assinatura-box">
+            <strong>_______________________________</strong><br>
+            Oficial de Dia / Testemunha
+        </div>
+    </div>
+
+    <div class="timestamp">
+        Espelho gerado em {% now "d/m/Y H:i" %} - Sistema de Custódia 6º BPM
+    </div>
+</div>
+
+<div class="no-print" style="text-align: center; margin-top: 20px; padding-bottom: 40px;">
+    <button onclick="window.print()" style="padding: 15px 40px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #1a3a2a; color: #fff; border: none; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        🖨️ IMPRIMIR ESPELHO
+    </button>
+    <br><br>
+    <a href="{% url 'caixas_incineracao' %}" style="text-decoration: none; color: #666; font-size: 14px;">← Voltar para Caixas</a>
+</div>
+
+</body>
+</html>

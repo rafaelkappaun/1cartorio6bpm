@@ -3,292 +3,216 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatório de Incineração - 6º BPM</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Fonts & Styling -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pmpr: {
+                            green: '#1a3a2a',
+                            dark: '#142d20',
+                            gold: '#c5a059',
+                        },
+                        incineration: {
+                            red: '#991b1b',
+                            dark: '#450a0a',
+                            light: '#fef2f2',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        @page { size: A4 landscape; margin: 12mm; }
+        @page { size: A4 landscape; margin: 10mm; }
         
-        * { box-sizing: border-box; }
-        
-        body { 
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
-            color: #1a1a1a;
-            font-size: 10px;
-            line-height: 1.3;
+        @layer base {
+            body { @apply font-sans antialiased text-slate-900 bg-slate-50; }
         }
-        
-        .folha-a4 {
-            background: white;
-            padding: 0;
-            max-width: 297mm;
-            margin: 0 auto;
+
+        .report-page {
+            @apply bg-white mx-auto shadow-2xl;
+            width: 297mm;
+            min-height: 210mm;
+            padding: 12mm;
         }
-        
-        .cabecalho-oficial {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 3px solid #1a3a2a;
-            margin-bottom: 12px;
-        }
-        
-        .logo-parana { height: 45px; width: auto; }
-        .logo-pmpr { height: 45px; width: auto; }
-        .orgao-titulo { text-align: center; flex-grow: 1; }
-        .orgao-titulo h1 { font-size: 13px; font-weight: 700; color: #1a3a2a; margin: 0; text-transform: uppercase; }
-        .orgao-titulo h2 { font-size: 10px; font-weight: 600; color: #333; margin: 2px 0 0 0; }
-        .orgao-titulo p { font-size: 8px; color: #666; margin: 2px 0 0 0; }
-        
-        .titulo-relatorio {
-            background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
-            color: white;
-            padding: 8px 15px;
-            margin: 0 -12mm 12px -12mm;
-            text-align: center;
-        }
-        .titulo-relatorio h3 { margin: 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
-        .titulo-relatorio small { font-size: 9px; opacity: 0.9; }
-        
-        .filtros-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            padding: 6px 10px;
-            margin-bottom: 10px;
-            font-size: 9px;
-        }
-        .filtro-tag {
-            display: inline-block;
-            background: #ffc107;
-            border: 1px solid #e0a800;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 9px;
-            margin: 1px;
-        }
-        
-        .resumo-cards {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .resumo-card {
-            background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .resumo-card h4 { font-size: 18px; font-weight: 700; margin: 0; }
-        .resumo-card small { font-size: 8px; text-transform: uppercase; opacity: 0.9; }
-        
-        .sec-title {
-            font-size: 11px;
-            font-weight: 700;
-            color: #dc3545;
-            text-transform: uppercase;
-            border-bottom: 2px solid #dc3545;
-            padding-bottom: 3px;
-            margin: 12px 0 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .sec-title::before {
-            content: '';
-            display: inline-block;
-            width: 4px;
-            height: 14px;
-            background: #ffc107;
-        }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 10px; }
-        th, td { border: 1px solid #dee2e6; padding: 4px 6px; }
-        th { background: #dc3545; color: white; font-weight: 600; text-transform: uppercase; font-size: 8px; }
-        tr:nth-child(even) { background: #f8f9fa; }
-        
-        .tabela-detalhada td { font-size: 8px; padding: 3px 4px; }
-        
-        .text-center { text-align: center; }
-        .text-end { text-align: right; }
-        .fw-bold { font-weight: 700; }
-        
-        .totalizador { background: #dc3545; color: white; font-weight: 700; }
-        
-        .assinatura-box { margin-top: 20px; padding-top: 10px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; }
-        .assinatura-item { text-align: center; width: 180px; }
-        .assinatura-linha { border-top: 1px solid #1a1a1a; margin-bottom: 3px; margin-top: 25px; }
-        .assinatura-nome { font-weight: 600; font-size: 10px; }
-        .assinatura-cargo { font-size: 8px; color: #666; }
-        
-        .rodape { margin-top: 15px; padding-top: 8px; border-top: 1px solid #dee2e6; text-align: center; font-size: 8px; color: #666; }
-        
+
+        .data-table th { @apply bg-incineration-dark text-white text-[9px] font-black uppercase tracking-widest py-3 px-4 text-left; }
+        .data-table td { @apply py-2.5 px-4 text-[10px] border-b border-slate-100; }
+        .data-table tr:nth-child(even) { @apply bg-slate-50/50; }
+
         @media print {
-            body { font-size: 9px; }
-            .folha-a4 { width: 100%; max-width: none; }
-            .no-print { display: none !important; }
-            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { @apply bg-white p-0; }
+            .report-page { @apply shadow-none w-full p-0; }
+            .no-print { @apply hidden !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="folha-a4">
-    <div class="cabecalho-oficial">
-        <img src="{% static 'img/brasao_parana.svg' %}" alt="Estado do Paraná" class="logo-parana">
-        <div class="orgao-titulo">
-            <h1>POLÍCIA MILITAR DO PARANÁ</h1>
-            <h2>6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR</h2>
-            <p>Setor de Gestão de Custódia e Evidências</p>
-        </div>
-        <img src="{% static 'img/brasao_pmpr.svg' %}" alt="PMPR" class="logo-pmpr">
+    <!-- Print Button Area -->
+    <div class="no-print sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 p-4 flex justify-center gap-4">
+        <button onclick="window.print()" class="flex items-center gap-2 px-6 py-2.5 bg-red-800 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-red-950 transition-all shadow-lg active:scale-95">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            Imprimir Termo de Destruição
+        </button>
+        <button onclick="history.back()" class="flex items-center gap-2 px-6 py-2.5 border border-slate-200 text-slate-500 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Voltar
+        </button>
     </div>
-    
-    <div class="titulo-relatorio">
-        <h3>RELATÓRIO DE MATERIAIS DESTRUÍDOS (INCINERADOS)</h3>
-        <small>{% now "d/m/Y H:i" %} | Materiais com status INCINERADO</small>
-    </div>
-    
-    {% if filtros %}
-    <div class="filtros-box">
-        <strong>Filtros Aplicados:</strong>
-        {% for key, value in filtros.items %}
-            <span class="filtro-tag">{{ value }}</span>
-        {% endfor %}
-        <span class="filtro-tag" style="background: #dc3545; color: white;"><strong>Status: INCINERADO</strong></span>
-    </div>
-    {% else %}
-    <div class="filtros-box">
-        <span class="filtro-tag" style="background: #dc3545; color: white;"><strong>Status: INCINERADO</strong></span>
-        <span class="filtro-tag"><strong>Período:</strong> Todos os registros</span>
-    </div>
-    {% endif %}
-    
-    <div class="resumo-cards">
-        <div class="resumo-card">
-            <h4>{{ resumo.total_materiais|default:"0" }}</h4>
-            <small>MATERIAIS DESTRUÍDOS</small>
-        </div>
-        <div class="resumo-card">
-            <h4>{{ resumo.total_noticiados|default:"0" }}</h4>
-            <small>PROCESSOS</small>
-        </div>
-        <div class="resumo-card">
-            <h4>{{ resumo.total_bous|default:"0" }}</h4>
-            <small>BOUs DISTINTOS</small>
-        </div>
-        <div class="resumo-card">
-            <h4>{{ resumo.peso_total_gramas|default:"0"|floatformat:0 }}g</h4>
-            <small>PESO DESTRUÍDO</small>
-        </div>
-    </div>
-    
-    <div class="sec-title">Por Substância Destruída</div>
-    {% if por_substancia %}
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 40%;">Substância</th>
-                <th style="width: 20%;" class="text-center">Quantidade</th>
-                <th style="width: 20%;" class="text-center">Peso Total (g)</th>
-                <th style="width: 20%;" class="text-center">% do Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in por_substancia %}
-            <tr>
-                <td class="fw-bold">{{ item.label }}</td>
-                <td class="text-center">{{ item.total }}</td>
-                <td class="text-center">{{ item.peso|floatformat:1 }}</td>
-                <td class="text-center">{{ item.total }}x</td>
-            </tr>
-            {% endfor %}
-            <tr class="totalizador">
-                <td><strong>TOTAL DESTRUÍDO</strong></td>
-                <td class="text-center"><strong>{{ resumo.total_materiais }}</strong></td>
-                <td class="text-center"><strong>{{ resumo.peso_total_gramas|floatformat:1 }}</strong></td>
-                <td class="text-center"><strong>100%</strong></td>
-            </tr>
-        </tbody>
-    </table>
-    {% else %}
-    <p class="text-center text-muted">Nenhum material destruído no período</p>
-    {% endif %}
-    
-    <div class="sec-title">Por Vara Judicial</div>
-    {% if por_vara %}
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 50%;">Vara Judicial</th>
-                <th style="width: 25%;" class="text-center">Materiais</th>
-                <th style="width: 25%;" class="text-center">%</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in por_vara %}
-            <tr>
-                <td>{{ item.label }}</td>
-                <td class="text-center fw-bold">{{ item.total }}</td>
-                <td class="text-center">{{ item.total }}x</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="text-center text-muted">Nenhuma vara registrada</p>
-    {% endif %}
-    
-    <div class="sec-title">Por Natureza Penal</div>
-    {% if por_natureza %}
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 60%;">Natureza Penal</th>
-                <th style="width: 20%;" class="text-center">Ocorrências</th>
-                <th style="width: 20%;" class="text-center">Materiais</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in por_natureza %}
-            <tr>
-                <td>{{ item.natureza }}</td>
-                <td class="text-center fw-bold">{{ item.total }}</td>
-                <td class="text-center">{{ item.total }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="text-center text-muted">Nenhuma natureza penal registrada</p>
-    {% endif %}
-    
-    <div class="assinatura-box">
-        <div class="assinatura-item">
-            <div class="assinatura-linha"></div>
-            <p class="assinatura-nome">Responsável pela Análise</p>
-            <p class="assinatura-cargo">Setor de Gestão de Custódia - 6º BPM</p>
-        </div>
-        <div class="assinatura-item">
-            <div class="assinatura-linha"></div>
-            <p class="assinatura-nome">{{ request.user.get_full_name|default:"Encarregado" }}</p>
-            <p class="assinatura-cargo">Cascavel/PR, {% now "d/m/Y" %}</p>
-        </div>
-    </div>
-    
-    <div class="rodape">
-        <p class="mb-0">Documento gerado pelo Sistema de Gestão de Custódia - 6º BPM Cascavel/PR | Termo de Destruição de Entorpecentes</p>
-    </div>
-</div>
 
-<div class="no-print text-center py-3">
-    <button onclick="window.print()" class="btn btn-danger">
-        <i class="bi bi-printer"></i> IMPRIMIR RELATÓRIO DE DESTRUIÇÃO
-    </button>
-    <a href="javascript:history.back()" class="btn btn-outline-secondary ms-2">Voltar</a>
-</div>
+    <!-- Official Report Page -->
+    <div class="report-page my-10">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b-4 border-red-800 pb-6 mb-8">
+            <img src="{% static 'img/brasao_parana.svg' %}" alt="PMPR" class="h-20 grayscale brightness-0">
+            <div class="text-center">
+                <h1 class="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none">Polícia Militar do Estado do Paraná</h1>
+                <h2 class="text-sm font-bold text-slate-700 mt-1 uppercase leading-none">6º Batalhão de Polícia Militar - Cascavel</h2>
+                <p class="text-[9px] font-medium text-slate-400 mt-2 uppercase tracking-widest leading-none">Controle de Destruição de Entorpecentes</p>
+            </div>
+            <img src="{% static 'img/brasao_pmpr.svg' %}" alt="PMPR" class="h-20 grayscale brightness-0">
+        </div>
 
+        <!-- Title & Stats Banner -->
+        <div class="bg-incineration-dark text-white rounded-[2rem] p-8 flex items-center justify-between mb-8 shadow-xl">
+            <div>
+                <h3 class="text-2xl font-black tracking-tight leading-none uppercase">Relatório de Materiais Incinerados</h3>
+                <p class="text-[10px] font-bold text-red-400 uppercase tracking-[0.2em] mt-3 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    Balanço de Materiais Destruídos • {% now "d/m/Y H:i" %}
+                </p>
+            </div>
+            
+            <div class="flex gap-8 border-l border-white/10 pl-8">
+                <div class="text-center">
+                    <p class="text-3xl font-black leading-none mb-1 text-red-100">{{ resumo.total_materiais|default:"0" }}</p>
+                    <p class="text-[8px] font-bold uppercase tracking-widest opacity-60 text-red-200">Total Itens</p>
+                </div>
+                <div class="text-center border-l border-white/10 pl-8">
+                    <p class="text-3xl font-black leading-none mb-1 text-red-100">{{ resumo.total_noticiados|default:"0" }}</p>
+                    <p class="text-[8px] font-bold uppercase tracking-widest opacity-60 text-red-200">Processos</p>
+                </div>
+                <div class="text-center border-l border-white/10 pl-8">
+                    <p class="text-3xl font-black leading-none mb-1 text-red-100">{{ resumo.peso_total_gramas|default:"0"|floatformat:1 }}g</p>
+                    <p class="text-[8px] font-bold uppercase tracking-widest opacity-60 text-red-200">Peso Destruído</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Tables -->
+        <div class="grid grid-cols-2 gap-8 mb-10">
+            
+            <!-- Items Table -->
+            <section>
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-red-800 pl-3">
+                    <h4 class="text-[11px] font-black text-slate-900 uppercase tracking-widest">Resumo por Substância</h4>
+                </div>
+                <div class="rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="w-full data-table">
+                        <thead>
+                            <tr>
+                                <th>Substância</th>
+                                <th class="text-center">Itens</th>
+                                <th class="text-right">Peso Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_substancia %}
+                            <tr>
+                                <td class="font-bold text-slate-700 uppercase">{{ item.label }}</td>
+                                <td class="text-center text-slate-500 font-bold">{{ item.total }}</td>
+                                <td class="text-right font-black text-red-800">{{ item.peso|floatformat:1 }}g</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-red-50 text-red-900 font-bold">
+                                <td class="py-2 px-4 uppercase text-[9px] font-black">Total Destruído</td>
+                                <td class="text-center">{{ resumo.total_materiais }}</td>
+                                <td class="text-right">{{ resumo.peso_total_gramas|floatformat:1 }}g</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Vara Table -->
+            <section>
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-red-800 pl-3">
+                    <h4 class="text-[11px] font-black text-slate-900 uppercase tracking-widest">Origem por Vara Judicial</h4>
+                </div>
+                 <div class="rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="w-full data-table">
+                        <thead>
+                            <tr>
+                                <th>Vara Judicial</th>
+                                <th class="text-center">Materiais</th>
+                                <th class="text-right">Volumetria (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_vara %}
+                            <tr>
+                                <td class="font-bold text-slate-700 uppercase">{{ item.label }}</td>
+                                <td class="text-center font-bold">{{ item.total }}</td>
+                                <td class="text-right">
+                                     <div class="flex items-center justify-end gap-2">
+                                         <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                             <div class="h-full bg-red-800" style="width: {% widthratio item.total|add:0 resumo.total_materiais 100 %}%"></div>
+                                         </div>
+                                         <span class="text-[9px] font-black text-slate-400">---</span>
+                                     </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Signature Area -->
+        <div class="mt-20 flex justify-between gap-12 border-t border-slate-200 pt-10">
+            <div class="text-center flex-1">
+                <div class="w-64 h-px bg-slate-300 mx-auto mb-3"></div>
+                <p class="text-[10px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Responsável pela Queima</p>
+                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Encarregado PMPR</p>
+            </div>
+            <div class="text-center flex-1">
+                <div class="w-64 h-px bg-slate-300 mx-auto mb-3"></div>
+                <p class="text-[10px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Fiscal da Vigilância Sanitária</p>
+                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Órgão Competente</p>
+            </div>
+            <div class="text-center flex-1">
+                <div class="w-64 h-px bg-slate-300 mx-auto mb-3"></div>
+                <p class="text-[10px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Representante Ministério Público</p>
+                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Testemunha de Destruição</p>
+            </div>
+        </div>
+
+        <!-- Footer Audit Info -->
+        <div class="text-center mt-12 opacity-40">
+            <p class="text-[8px] font-bold uppercase tracking-[0.3em] text-slate-500">Documento Oficial de Baixa Definitive • Sistema de Custódia 6º BPM • Cascavel/PR • {% now "Y" %}</p>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

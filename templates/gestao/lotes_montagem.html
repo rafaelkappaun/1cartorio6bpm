@@ -1,272 +1,241 @@
 {% extends "painel_base.html" %}
 {% load static %}
 
-{% block content %}
-<style>
-    .table-responsive::-webkit-scrollbar { width: 6px; }
-    .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; }
-    .table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-    .card { border-radius: 8px; }
-</style>
+{% block title %}Montagem de Lotes | 6º BPM{% endblock %}
+{% block breadcrumb %}Incineração > Lotes{% endblock %}
+{% block h1 %}Validação de Queima{% endblock %}
 
-<div class="container-fluid py-4">
-    <div class="row mb-3">
-        <div class="col-12">
-            <h4 class="fw-bold text-dark mb-1">
-                <i class="bi bi-collection me-2 text-primary"></i>Montagem de Lotes de Incineração
-            </h4>
-            <p class="text-muted small mb-0">
-                Organize entorpecentes autorizados em lotes de até 20 processos. 
-                Imprima a capa de cada lote e a certidão coletiva por vara.
-            </p>
+{% block extra_css %}
+<style>
+    .card-lote {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s;
+    }
+    .table-custom tr.selected td {
+        background-color: rgba(16, 185, 129, 0.05); /* emerald-50 equivalente */
+    }
+    .check-custom {
+        width: 1.25rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+    .badge-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        padding: 0.35rem 0.7rem;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-5 mb-3 mb-md-0">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-pmpr-green text-white p-3 rounded-4 shadow-sm">
+                <i data-lucide="package-plus" width="28" height="28"></i>
+            </div>
+            <div>
+                <p class="text-pmpr-gold fw-bold mb-0 text-uppercase small d-flex align-items-center gap-2" style="font-size: 0.7rem; letter-spacing: 1px;">
+                    <span class="spinner-grow spinner-grow-sm text-success" role="status" style="width: 8px; height: 8px;"></span>
+                    {{ total_processos }} Processos Pendentes
+                </p>
+                <p class="text-muted small fw-medium mb-0">Agrupe processos para facilitar o transporte e incineração.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7 text-md-end d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small fw-bold text-uppercase">Itens/Lote:</label>
+            <input type="number" name="limite_lote" id="limiteLote" value="20" min="15" max="20" class="form-control form-control-sm rounded-3 fw-bold text-center" style="width: 70px;">
+        </div>
+        <button type="button" onclick="agruparAutomatico()" class="btn btn-warning fw-bold text-dark rounded-3 px-3">Agrupar</button>
+        <button type="button" onclick="limparSelecao()" class="btn btn-light fw-bold text-muted rounded-3 px-3">Limpar</button>
+    </div>
+</div>
+
+<form method="POST" action="{% url 'fechar_lote_manual' %}" id="formLote" class="row g-4">
+    {% csrf_token %}
+
+    <!-- Coluna de Seleção de Processos -->
+    <div class="col-xl-8">
+        <div class="card card-lote border-0 shadow-sm overflow-hidden h-100">
+            <div class="card-header bg-light bg-opacity-50 border-bottom p-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <input type="checkbox" id="selectAll" class="form-check-input check-custom mt-0">
+                    <span class="fw-bold text-dark text-uppercase small" style="letter-spacing: 1px;">Selecionar Todos</span>
+                </div>
+                <div id="selectionBadge" class="badge bg-success px-3 py-2 d-none rounded-pill">
+                    <span id="contador-processos">0</span> <span class="fw-medium">Marcados</span>
+                </div>
+            </div>
+
+            <div class="table-responsive" style="max-height: 600px;">
+                <table class="table table-hover align-middle mb-0" id="tabelaProcessos">
+                    <thead class="sticky-top bg-white shadow-sm">
+                        <tr>
+                            <th class="border-0 px-4 py-3 text-muted" style="width: 50px;">Sel.</th>
+                            <th class="border-0 px-4 py-3 text-muted text-uppercase small fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Proc. / BOU</th>
+                            <th class="border-0 px-4 py-3 text-muted text-uppercase small fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Vara</th>
+                            <th class="border-0 px-4 py-3 text-muted text-uppercase small fw-bold text-end" style="font-size: 0.7rem; letter-spacing: 1px;">Totais</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proc_key, proc_data in processos_agrupados.items %}
+                        <tr class="processo-row">
+                            <td class="px-4">
+                                <input type="checkbox" name="processos_selecionados" value="{{ proc_key }}" class="form-check-input check-custom processo-check">
+                            </td>
+                            <td class="px-4">
+                                <div class="fw-bold text-pmpr-green">{{ proc_data.processo|default:"SEM PROCESSO" }}</div>
+                                <div class="text-muted small fw-bold">{{ proc_data.bou }}</div>
+                            </td>
+                            <td class="px-4">
+                                <span class="badge bg-light text-dark border fw-bold text-uppercase" style="font-size: 0.65rem;">{{ proc_data.vara_display }}</span>
+                            </td>
+                            <td class="px-4 text-end">
+                                <div class="fw-bold text-dark">{% with proc_data.materiais|first as first_mat %}{{ first_mat.peso_formatado }}{% endwith %}</div>
+                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">{{ proc_data.materiais|length }} Itens</div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="text-muted opacity-50 mb-3"><i data-lucide="layers" width="48" height="48"></i></div>
+                                <h6 class="text-muted fw-bold text-uppercase">Nenhum processo aguardando incineração.</h6>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer bg-light bg-opacity-50 border-top p-4 d-flex justify-content-between align-items-center">
+                <small class="text-muted fw-medium">Limite de <span id="limiteMostrar">20</span> materiais por lote (processos não são divididos)</small>
+                <button type="submit" id="btnCriarLote" disabled class="btn btn-pmpr px-4 py-2 opacity-50">
+                    Criar Lote(s) <span id="label-qtd"></span>
+                </button>
+            </div>
         </div>
     </div>
 
-    <form method="POST" action="{% url 'fechar_lote_manual' %}" id="formLote">
-        {% csrf_token %}
+    <!-- Coluna Lateral de Resumos // Lotes Abertos -->
+    <div class="col-xl-4">
         
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="fw-bold mb-0">
-                                    <i class="bi bi-folder-plus me-2"></i>LOTE EM FORMAÇÃO
-                                </h5>
-                                <small>{{ total_processos }} processos • {{ total_itens }} substâncias</small>
-                            </div>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-light btn-sm" onclick="selecionar20()">
-                                    <i class="bi bi-check2-square"></i> Selecionar 20
-                                </button>
-                                <button type="button" class="btn btn-light btn-sm" onclick="selecionarTodos()">
-                                    Todos
-                                </button>
-                                <button type="button" class="btn btn-outline-light btn-sm" onclick="limparSelecao()">
-                                    Limpar
-                                </button>
-                            </div>
-                        </div>
+        <!-- Indicadores -->
+        <div class="card bg-pmpr-dark text-white border-0 rounded-4 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="text-pmpr-gold fw-bold text-uppercase mb-4" style="font-size: 0.7rem; letter-spacing: 2px;">Cenário de Queimas</h6>
+                <div class="row text-center">
+                    <div class="col-6 border-end border-white border-opacity-10">
+                        <h2 class="fw-bold mb-0">{{ lotes_abertos|length }}</h2>
+                        <small class="text-white text-opacity-50 text-uppercase fw-bold" style="font-size: 0.65rem;">Abertos</small>
                     </div>
-                    
-                    <div class="card-body p-0">
-                        {% if processos_agrupados %}
-                        <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th class="ps-3" style="width: 50px;">
-                                            <input type="checkbox" class="form-check-input" id="selectAll">
-                                        </th>
-                                        <th>PROCESSO / BOU</th>
-                                        <th style="width: 150px;">VARA</th>
-                                        <th class="text-center" style="width: 80px;">QTD</th>
-                                        <th style="width: 200px;">SUBSTÂNCIAS</th>
-                                        <th class="text-end" style="width: 100px;">PESO</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for proc_key, proc_data in processos_agrupados.items %}
-                                    <tr class="processo-row">
-                                        <td class="ps-3">
-                                            <input type="checkbox" name="processos_selecionados" 
-                                                   value="{{ proc_key }}" 
-                                                   class="form-check-input processo-check"
-                                                   data-qtd="{{ proc_data.materiais|length }}">
-                                        </td>
-                                        <td>
-                                            <div class="fw-bold text-primary">{{ proc_data.processo|default:"-" }}</div>
-                                            <small class="text-muted">{{ proc_data.bou }}</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ proc_data.vara_display }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-dark">{{ proc_data.materiais|length }}</span>
-                                        </td>
-                                        <td>
-                                            {% for mat in proc_data.materiais %}
-                                                <span class="badge bg-danger mb-1" style="font-size: 0.6rem;">
-                                                    {{ mat.get_substancia_display }}
-                                                    {% if mat.numero_lacre %}({{ mat.numero_lacre|slice:":10" }}){% endif %}
-                                                </span>
-                                            {% endfor %}
-                                        </td>
-                                        <td class="text-end">
-                                            <span class="text-success fw-bold small">
-                                                {% with proc_data.materiais|first as first_mat %}
-                                                    {{ first_mat.peso_formatado }}
-                                                {% endwith %}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5">
-                                            <i class="bi bi-inbox text-muted display-6 d-block mb-3 opacity-25"></i>
-                                            <p class="text-muted fw-bold">Nenhum material autorizado pendente.</p>
-                                            <small class="text-muted">Authorize materiais via PROJUDI para aparecerem aqui.</small>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="p-3 bg-light border-top">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="me-3">
-                                        <strong id="contador-processos">0</strong> processos marcados
-                                    </span>
-                                    <span class="text-muted">|</span>
-                                    <span class="ms-3 text-muted">
-                                        Máximo: <strong>20</strong> por lote
-                                    </span>
-                                </div>
-                                <button type="submit" class="btn btn-success fw-bold px-4" id="btnCriarLote" disabled>
-                                    <i class="bi bi-folder-plus me-2"></i>
-                                    CRIAR LOTE(S) <span id="label-qtd"></span>
-                                </button>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="p-5 text-center">
-                            <i class="bi bi-check-circle text-success display-4 d-block mb-3 opacity-50"></i>
-                            <p class="text-muted fw-bold">Nenhum material aguardando loteamento</p>
-                        </div>
-                        {% endif %}
+                    <div class="col-6">
+                        <h2 class="fw-bold mb-0 text-success">{{ lotes_incinerados|length }}</h2>
+                        <small class="text-white text-opacity-50 text-uppercase fw-bold" style="font-size: 0.65rem;">Destruídos</small>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-4 border-top border-warning border-4">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0">
-                            <i class="bi bi-hourglass-split text-warning me-2"></i>
-                            LOTES ABERTOS ({{ lotes_abertos|length }})
-                        </h5>
+        <!-- Lotes Despachados/Abertos -->
+        <div class="card card-lote border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom p-4">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i data-lucide="package" width="18" class="text-pmpr-gold"></i>
+                    Lotes Formados
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                {% for lote in lotes_abertos %}
+                <div class="border rounded-3 p-3 mb-3 hover-shadow transition-all bg-light bg-opacity-50">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="fw-bold text-pmpr-green mb-0" style="font-size: 0.95rem;">{{ lote.identificador }}</h6>
+                            <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem;">{{ lote.data_criacao|date:"d M Y" }}</small>
+                        </div>
+                        <span class="badge bg-warning text-dark">{{ lote.processos_count }} Procs</span>
                     </div>
-                    <div class="card-body p-0">
-                        {% if lotes_abertos %}
-                        {% for lote in lotes_abertos %}
-                        <div class="border-bottom p-3">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h6 class="mb-0 fw-bold">{{ lote.identificador }}</h6>
-                                    <small class="text-muted">
-                                        {{ lote.data_criacao|date:"d/m/Y" }}
-                                    </small>
-                                </div>
-                                <span class="badge bg-warning text-dark">{{ lote._processos_count }} proc</span>
-                            </div>
-                            <div class="small text-muted mb-2">
-                                {{ lote._materiais_count }} substâncias
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="imprimirCapa({{ lote.id }})">
-                                <i class="bi bi-printer"></i> Imprimir Capa
-                            </button>
-                            <button type="button" class="btn btn-sm btn-success w-100" onclick="finalizarLote({{ lote.id }})">
-                                <i class="bi bi-check-circle"></i> Finalizar Lote
-                            </button>
-                        </div>
-                        {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <small>Nenhum lote aberto</small>
-                        </div>
-                        {% endif %}
-                        
-                        {% if lotes_abertos %}
-                        <div class="p-3 bg-light">
-                            <button type="button" class="btn btn-warning w-100 fw-bold" onclick="imprimirCertidaoColetiva()">
-                                <i class="bi bi-file-earmark-text me-2"></i>
-                                Certidão por Vara
-                            </button>
-                            <small class="text-muted d-block text-center mt-2">
-                                Agrupa todos os lotes abertos
-                            </small>
-                        </div>
-                        {% endif %}
+                    <div class="d-flex gap-2">
+                        <button type="button" onclick="imprimirCapa({{ lote.id }})" class="btn btn-outline-secondary btn-sm flex-fill" title="Imprimir Capa do Lote">
+                            <i data-lucide="printer" width="16"></i>
+                        </button>
+                        <button type="button" onclick="finalizarLote({{ lote.id }})" class="btn btn-success btn-sm flex-grow-1 fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
+                            Concluir Incineração
+                        </button>
                     </div>
                 </div>
-
-                <div class="card border-0 shadow-sm border-top border-dark">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0">
-                            <i class="bi bi-check-circle text-success me-2"></i>
-                            LOTES INCINERADOS ({{ lotes_incinerados|length }})
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if lotes_incinerados %}
-                        {% for lote in lotes_incinerados %}
-                        <div class="border-bottom p-3">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <h6 class="mb-0">{{ lote.identificador }}</h6>
-                                    <small class="text-muted">{{ lote.data_criacao|date:"d/m/Y" }}</small>
-                                </div>
-                                <span class="badge bg-success">OK</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <small>Nenhum lote finalizado</small>
-                        </div>
-                        {% endif %}
-                    </div>
+                {% empty %}
+                <div class="text-center py-4 text-muted opacity-50">
+                    <i data-lucide="box" width="32" class="mb-2"></i>
+                    <p class="small fw-bold text-uppercase mb-0">Nenhum lote esperando.</p>
                 </div>
+                {% endfor %}
 
-                {% if fila_conferidos %}
-                <div class="card border-0 shadow-sm mt-4 border-top border-secondary">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0 text-secondary">
-                            <i class="bi bi-clock-history me-2"></i>
-                            Aguardando Autorização ({{ fila_conferidos.count }})
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% for mat in fila_conferidos|slice:":5" %}
-                        <div class="border-bottom p-2">
-                            <small>
-                                <span class="text-primary">{{ mat.noticiado.ocorrencia.bou }}</span>
-                                <br>{{ mat.get_substancia_display }}
-                            </small>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
+                {% if lotes_abertos %}
+                <button type="button" onclick="imprimirCertidaoColetiva()" class="btn btn-outline-pmpr w-100 fw-bold text-uppercase mt-2 border-pmpr-gold text-pmpr-gold" style="font-size: 0.75rem;">
+                    Relatório por Vara
+                </button>
                 {% endif %}
             </div>
         </div>
-    </form>
-</div>
 
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
     const selectAll = document.getElementById('selectAll');
     const processoChecks = document.querySelectorAll('.processo-check');
     const btnCriar = document.getElementById('btnCriarLote');
     const labelQtd = document.getElementById('label-qtd');
     const contador = document.getElementById('contador-processos');
+    const selectionBadge = document.getElementById('selectionBadge');
+    const limiteInput = document.getElementById('limiteLote');
+    const limiteMostrar = document.getElementById('limiteMostrar');
 
     function atualizarInterface() {
         const marcados = document.querySelectorAll('.processo-check:checked');
         const total = marcados.length;
-        const numLotes = Math.ceil(total / 20);
         
         contador.textContent = total;
-        labelQtd.textContent = total > 0 ? `(${total} proc / ${numLotes} lote${numLotes > 1 ? 's' : ''})` : '';
+        labelQtd.textContent = total > 0 ? `(${total} processos)` : '';
         btnCriar.disabled = total === 0;
+
+        if (total > 0) {
+            selectionBadge.classList.remove('d-none');
+            btnCriar.classList.remove('opacity-50');
+        } else {
+            selectionBadge.classList.add('d-none');
+            btnCriar.classList.add('opacity-50');
+        }
 
         document.querySelectorAll('.processo-row').forEach(row => {
             const check = row.querySelector('.processo-check');
-            row.classList.toggle('table-primary', check.checked);
+            if (check.checked) {
+                row.classList.add('selected');
+            } else {
+                row.classList.remove('selected');
+            }
         });
     }
+
+    // Atualizar limite na interface
+    limiteInput.addEventListener('change', function() {
+        let valor = parseInt(this.value);
+        if (valor < 15) valor = 15;
+        if (valor > 20) valor = 20;
+        this.value = valor;
+        limiteMostrar.textContent = valor;
+    });
 
     selectAll.addEventListener('change', function() {
         processoChecks.forEach(c => c.checked = this.checked);
@@ -275,32 +244,129 @@ document.addEventListener('DOMContentLoaded', function() {
 
     processoChecks.forEach(c => c.addEventListener('change', atualizarInterface));
 
-    window.selecionarTodos = function() {
-        processoChecks.forEach(c => c.checked = true);
-        atualizarInterface();
-    };
-
     window.limparSelecao = function() {
         processoChecks.forEach(c => c.checked = false);
         selectAll.checked = false;
         atualizarInterface();
     };
 
-    window.selecionar20 = function() {
+    window.agruparAutomatico = function() {
+        const limite = parseInt(limiteInput.value) || 20;
+        
+        // Primeiro, desmarca tudo
         processoChecks.forEach(c => c.checked = false);
-        for (let i = 0; i < 20 && i < processoChecks.length; i++) {
-            processoChecks[i].checked = true;
+        
+        // Agrupa os processos pela quantidade de itens que tem
+        // Ordena por linha na tabela (que já está ordenada por data)
+        const processos = [];
+        document.querySelectorAll('.processo-row').forEach((row, index) => {
+            const check = row.querySelector('.processo-check');
+            const itensText = row.querySelector('.text-muted small').textContent;
+            const qtdItens = parseInt(itensText.match(/(\d+) Itens/)?.[1] || 1);
+            processos.push({
+                check: check,
+                qtd: qtdItens,
+                row: row
+            });
+        });
+        
+        // Algoritmo de distribuição First-Fit Decreasing
+        // Ordena por quantidade (maior primeiro) para otimizar
+        processos.sort((a, b) => b.qtd - a.qtd);
+        
+        const lotes = [];
+        let loteAtual = { espacos: limite, processos: [] };
+        
+        for (const proc of processos) {
+            if (proc.qtd > limite) {
+                // Processo grande demais, vai em lote próprio (não implementado na seleção)
+                // Por agora, marca junto
+                if (loteAtual.processos.length > 0) {
+                    lotes.push(loteAtual);
+                }
+                lotes.push({ espacos: 0, processos: [proc] });
+                loteAtual = { espacos: limite, processos: [] };
+            } else if (proc.qtd > loteAtual.espacos) {
+                // Não cabe no lote atual, inicia novo
+                lotes.push(loteAtual);
+                loteAtual = { espacos: limite, processos: [proc] };
+                loteAtual.espacos -= proc.qtd;
+            } else {
+                // Cabe no lote atual
+                loteAtual.processos.push(proc);
+                loteAtual.espacos -= proc.qtd;
+            }
         }
+        
+        if (loteAtual.processos.length > 0) {
+            lotes.push(loteAtual);
+        }
+        
+        // Marcar apenas processos do primeiro lote que cabe
+        if (lotes.length > 0) {
+            lotes[0].processos.forEach(p => p.check.checked = true);
+        }
+        
         atualizarInterface();
+        
+        // Mostrar preview
+        const totalLotes = lotes.length;
+        const primeiroLoteItens = lotes[0]?.processos.reduce((acc, p) => acc + p.qtd, 0) || 0;
+        
+        Swal.fire({
+            title: 'Agrupamento Sugerido',
+            html: `<p>Com limite de <b>${limite}</b> materiais/lote:</p>
+                   <p class="mb-1">• <b>${totalLotes}</b> lote(s) serão criados</p>
+                   <p class="mb-1">• 1º lote: <b>${primeiroLoteItens}</b> materiais</p>
+                   <p class="text-muted small">Processos não são divididos entre lotes.</p>`,
+            icon: 'info',
+            confirmButtonText: 'Entendi',
+            confirmButtonColor: '#1a3a2a'
+        });
     };
 
     window.imprimirCapa = function(loteId) {
-        window.open(`/api/lotes/imprimir_capa_lote/?lote_id=${loteId}`, '_blank');
+        window.open(`/capa-lote/${loteId}/`, '_blank');
     };
 
     window.imprimirCertidaoColetiva = function() {
-        window.open('/api/lotes/imprimir_certidao_por_vara/', '_blank');
+        window.open('/lotes/certidao-coletiva/', '_blank');
     };
-});
+
+    window.finalizarLote = function(loteId) {
+        Swal.fire({
+            title: 'Confirmar Queima?',
+            text: "O lote será marcado como INCINERADO, tirando do cofre permanentemente. A ação será salva no auditor.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#1a3a2a',
+            cancelButtonColor: '#e2e8f0',
+            confirmButtonText: 'Queimar Lote',
+            cancelButtonText: '<span style="color:#64748b">Cancelar</span>'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/lotes/finalizar/';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'lote_id';
+                idInput.value = loteId;
+                
+                form.appendChild(csrfInput);
+                form.appendChild(idInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    };
+
+    lucide.createIcons();
 </script>
 {% endblock %}

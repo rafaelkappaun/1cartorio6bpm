@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import LoteIncineracao, Material, RegistroHistorico, Ocorrencia, Noticiado
+from .models import LoteIncineracao, Material, RegistroHistorico, Ocorrencia, Noticiado, CaixaIncineracao
 
 @admin.register(Ocorrencia)
 class OcorrenciaAdmin(admin.ModelAdmin):
@@ -82,3 +82,34 @@ class RegistroHistoricoAdmin(admin.ModelAdmin):
     # Histórico nunca deve ser apagado ou editado manualmente
     def has_add_permission(self, request): return False
     def has_delete_permission(self, request, obj=None): return False
+
+@admin.register(CaixaIncineracao)
+class CaixaIncineracaoAdmin(admin.ModelAdmin):
+    list_display = ('identificador', 'data_criacao', 'status_colorido', 'get_total_lotes', 'get_total_processos', 'data_incineracao')
+    list_filter = ('status',)
+    readonly_fields = ('data_criacao', 'criado_por')
+    
+    def status_colorido(self, obj):
+        colors = {
+            'INCINERADO': 'red',
+            'ABERTO': 'green',
+        }
+        return format_html(
+            '<b style="color: {};">{}</b>',
+            colors.get(obj.status, 'black'),
+            obj.get_status_display()
+        )
+    status_colorido.short_description = 'Status'
+
+    def get_total_lotes(self, obj):
+        return obj.lotes.count()
+    get_total_lotes.short_description = 'Qtd Lotes'
+
+    def get_total_processos(self, obj):
+        return obj.processos_count
+    get_total_processos.short_description = 'Qtd Processos'
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.status == 'INCINERADO':
+            return False
+        return True

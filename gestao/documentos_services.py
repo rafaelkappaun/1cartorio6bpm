@@ -1,7 +1,9 @@
 import os
 import logging
 from io import BytesIO
+from datetime import datetime
 from django.conf import settings
+from django.utils import timezone
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
@@ -11,11 +13,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import mm, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY, TA_RIGHT
-from datetime import datetime
-from django.utils import timezone
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
+logging.getLogger("svglib").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
 PRETO = colors.black
@@ -47,21 +48,21 @@ def draw_svg(canvas_obj, path, x, y, width, height):
 def _estilos():
     s = getSampleStyleSheet()
     
-    s.add(ParagraphStyle('Titulo', fontSize=13, fontName='Helvetica-Bold',
-        alignment=TA_CENTER, spaceAfter=4, textColor=PRETO))
-    s.add(ParagraphStyle('Subtitulo', fontSize=10, fontName='Helvetica-Bold',
-        alignment=TA_CENTER, spaceAfter=8, textColor=PRETO))
-    s.add(ParagraphStyle('Corpo', fontSize=10, leading=13, fontName='Helvetica',
+    s.add(ParagraphStyle('Titulo', fontSize=14, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, spaceAfter=6, textColor=PRETO))
+    s.add(ParagraphStyle('Subtitulo', fontSize=11, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, spaceAfter=12, textColor=PRETO))
+    s.add(ParagraphStyle('Corpo', fontSize=11, leading=14, fontName='Helvetica',
         alignment=TA_JUSTIFY, spaceBefore=6, spaceAfter=6))
-    s.add(ParagraphStyle('CorpoLeft', fontSize=10, leading=13, fontName='Helvetica',
+    s.add(ParagraphStyle('CorpoLeft', fontSize=11, leading=14, fontName='Helvetica',
         alignment=TA_LEFT))
-    s.add(ParagraphStyle('Centro', fontSize=10, fontName='Helvetica-Bold',
+    s.add(ParagraphStyle('Centro', fontSize=11, fontName='Helvetica-Bold',
         alignment=TA_CENTER))
-    s.add(ParagraphStyle('Direita', fontSize=10, fontName='Helvetica',
+    s.add(ParagraphStyle('Direita', fontSize=11, fontName='Helvetica',
         alignment=TA_RIGHT))
-    s.add(ParagraphStyle('Rodape', fontSize=8, fontName='Helvetica-Oblique',
+    s.add(ParagraphStyle('Rodape', fontSize=9, fontName='Helvetica-Oblique',
         alignment=TA_CENTER, textColor=colors.Color(0.4, 0.4, 0.4)))
-    s.add(ParagraphStyle('Assinatura', fontSize=9, fontName='Helvetica',
+    s.add(ParagraphStyle('Assinatura', fontSize=10, fontName='Helvetica',
         alignment=TA_CENTER))
     return s
 
@@ -71,22 +72,23 @@ def _cabecalho_oficio(c, doc, cidade="CASCAVEL"):
     w, h = A4
     m = doc.leftMargin
     
+    draw_svg(c, LOGO_PARANA, m, h - 65, 45, 45)
+    draw_svg(c, LOGO_PMPR, w - m - 45, h - 65, 45, 45)
+    
     c.setStrokeColor(PRETO)
-    c.setLineWidth(0.5)
-    c.line(m, h - 45, w - m, h - 45)
+    c.setLineWidth(1)
+    c.line(m, h - 70, w - m, h - 70)
     
     cx = w / 2
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(cx, h - 25, "ESTADO DO PARANA")
+    c.setFont("Helvetica-Bold", 12)
+    c.drawCentredString(cx, h - 30, "ESTADO DO PARANÁ")
     c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(cx, h - 36, "POLICIA MILITAR DO PARANA")
+    c.drawCentredString(cx, h - 45, "POLÍCIA MILITAR DO PARANÁ")
     c.setFont("Helvetica-Bold", 9)
-    c.drawCentredString(cx, h - 47, "6o BATALHAO DE POLICIA MILITAR")
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(cx, h - 57, f"CARTORIO DE TERMOS CIRCUNSTANCIADOS - {cidade}/PR")
+    c.drawCentredString(cx, h - 60, "6º BATALHÃO DE POLÍCIA MILITAR")
     
-    c.setFont("Helvetica", 7)
-    c.drawCentredString(cx, 18, "6o BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(cx, 18, "6º BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
     
     c.restore()
 
@@ -96,18 +98,23 @@ def _cabecalho_landscape(c, doc):
     w, h = landscape(A4)
     m = doc.leftMargin
     
+    draw_svg(c, LOGO_PARANA, m, h - 65, 45, 45)
+    draw_svg(c, LOGO_PMPR, w - m - 45, h - 65, 45, 45)
+    
     c.setStrokeColor(PRETO)
-    c.setLineWidth(0.5)
-    c.line(m, h - 40, w - m, h - 40)
+    c.setLineWidth(1)
+    c.line(m, h - 70, w - m, h - 70)
     
     cx = w / 2
+    c.setFont("Helvetica-Bold", 12)
+    c.drawCentredString(cx, h - 30, "ESTADO DO PARANÁ")
     c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(cx, h - 22, "ESTADO DO PARANA - POLICIA MILITAR DO PARANA")
+    c.drawCentredString(cx, h - 45, "POLÍCIA MILITAR DO PARANÁ")
     c.setFont("Helvetica-Bold", 9)
-    c.drawCentredString(cx, h - 32, "6o BATALHAO DE POLICIA MILITAR - CASCAVEL/PR")
+    c.drawCentredString(cx, h - 60, "6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL/PR")
     
     c.setFont("Helvetica", 7)
-    c.drawCentredString(cx, 15, "6o BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
+    c.drawCentredString(cx, 15, "6º BPM - Rua Pernambuco, 1711, Centro - Fone: (45) 3321-6200")
     
     c.restoreState()
 
@@ -142,7 +149,7 @@ def _tabela_info(dados, estilos, cols=None):
 
 def _tabela_items(materiais, estilos, cols=None, col_headers=None):
     if cols is None:
-        cols = [0.7*cm, 3*cm, 2.5*cm, 3*cm, 2*cm, 2.5*cm]
+        cols = [0.8*cm, 3.2*cm, 3*cm, 5.5*cm, 2*cm, 2.5*cm]
     if col_headers is None:
         col_headers = ['N', 'BOU', 'PROC', 'DESCRICAO', 'PESO', 'LACRE']
     
@@ -151,6 +158,8 @@ def _tabela_items(materiais, estilos, cols=None, col_headers=None):
         oc = m.noticiado.ocorrencia if m.noticiado else None
         bou = oc.bou if oc else '-'
         proc = oc.processo[:15] if oc and oc.processo else '-'
+        noti = (m.noticiado.nome or '-')[:25] if m.noticiado else '-'
+        cat = m.get_categoria_display()[:15]
         
         if m.categoria == 'ENTORPECENTE':
             desc = m.get_substancia_display() if m.substancia else 'Entorpecente'
@@ -159,10 +168,27 @@ def _tabela_items(materiais, estilos, cols=None, col_headers=None):
         else:
             desc = (m.descricao_geral or m.get_categoria_display())[:30]
         
-        peso = m.peso_formatado() if m.categoria == 'ENTORPECENTE' else '-'
+        peso = m.peso_formatado() if hasattr(m, 'peso_formatado') and m.categoria == 'ENTORPECENTE' else str(m.peso_real or m.peso_estimado or '-')
+        if peso == 'None': peso = '-'
         lacre = m.numero_lacre or '-'
+        subst = m.get_substancia_display() if m.categoria == 'ENTORPECENTE' and m.substancia else '-'
         
-        dados.append([str(i+1), bou[:15], proc, desc[:25], peso, lacre[:15]])
+        mapa = {
+            'N': str(i+1),
+            'BOU': bou[:15],
+            'PROC': proc[:15],
+            'NOTICIADO': noti,
+            'CATEGORIA': cat,
+            'DESCRICAO': desc,
+            'DESCRICAO DO OBJETO': desc,
+            'PESO': peso,
+            'LACRE': lacre[:15],
+            'SUBSTANCIA': subst,
+            'SUBST': subst
+        }
+        
+        linha = [mapa.get(head.upper(), '-') for head in col_headers]
+        dados.append(linha)
     
     t = Table(dados, colWidths=cols, repeatRows=1)
     t.setStyle(TableStyle([
@@ -181,7 +207,7 @@ def _tabela_items(materiais, estilos, cols=None, col_headers=None):
 
 def _tabela_items_landscape(materiais, estilos, cols=None, col_headers=None):
     if cols is None:
-        cols = [0.7*cm, 2.5*cm, 2*cm, 3*cm, 2.5*cm, 1.5*cm, 1.5*cm, 3.5*cm, 2*cm]
+        cols = [0.8*cm, 3*cm, 3*cm, 5*cm, 4*cm, 2.5*cm, 1.5*cm, 4.5*cm, 2.5*cm]
     if col_headers is None:
         col_headers = ['N', 'BOU', 'PROC', 'NOTICIADO', 'SUBST/DESC', 'PESO', 'UN', 'OBS', 'LACRE']
     
@@ -251,7 +277,7 @@ def gerar_recibo_entrada_pdf(ocorrencia):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph("RECIBO DE DEPOSITO DE MATERIAIS APREENDIDOS", est['Titulo']))
@@ -322,7 +348,7 @@ def gerar_recibo_entrega_unico(material, usuario=None, tipo='ENTREGA'):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     oc = material.noticiado.ocorrencia if material.noticiado else None
@@ -408,7 +434,7 @@ def gerar_oficio_materiais_gerais(materiais, usuario):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph(f"<b>OFICIO No {ofc_id} - CARTORIO DO 6o BPM</b>", est['Titulo']))
@@ -436,9 +462,21 @@ def gerar_oficio_materiais_gerais(materiais, usuario):
 
     st.append(Paragraph("RELACAO DE MATERIAIS ENCAMINHADOS", est['Centro']))
     st.append(Spacer(1, 6))
-    st.append(_tabela_items(materiais, est,
-        cols=[0.7*cm, 2.5*cm, 3*cm, 5.5*cm, 3*cm],
-        col_headers=['N', 'BOU', 'NOTICIADO', 'DESCRICAO DO OBJETO', 'LACRE']))
+    
+    por_vara = {}
+    for m in materiais:
+        oc = m.noticiado.ocorrencia if m.noticiado else None
+        vara = oc.get_vara_display() if oc and hasattr(oc, 'get_vara_display') and oc.vara else "VARA NAO INFORMADA"
+        por_vara.setdefault(vara, []).append(m)
+        
+    for vara, mats_vara in sorted(por_vara.items()):
+        st.append(Paragraph(f"<b>- {vara.upper()}</b>", est['CorpoLeft']))
+        st.append(Spacer(1, 4))
+        st.append(_tabela_items(mats_vara, est,
+            cols=[0.8*cm, 3.2*cm, 4.5*cm, 6*cm, 2.5*cm],
+            col_headers=['N', 'BOU', 'NOTICIADO', 'DESCRICAO DO OBJETO', 'LACRE']))
+        st.append(Spacer(1, 8))
+        
     st.append(Spacer(1, 12))
 
     st.append(Paragraph(
@@ -473,7 +511,7 @@ def gerar_capa_lote_pdf(lote, usuario=None):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph("TERMO DE DESTRUICAO DE ENTORPECENTES", est['Titulo']))
@@ -522,7 +560,7 @@ def gerar_certidao_incineracao_antecipada(lotes, usuario):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph("CERTIDAO DE DESTRUICAO DE SUBSTANCIAS ENTORPECENTES", est['Titulo']))
@@ -640,7 +678,7 @@ def gerar_certidao_incineracao_coletiva(lotes, usuario):
 
     est = _estilos()
     doc = SimpleDocTemplate(caminho, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph("CERTIDAO DE INCINERACAO EFETIVADA", est['Titulo']))
@@ -705,7 +743,7 @@ def gerar_capas_lote_coletivas(lote_ids):
 
     W, H = landscape(A4)
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=2*cm, rightMargin=2*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
     lotes = list(LoteIncineracao.objects.filter(id__in=lote_ids))
 
@@ -767,7 +805,7 @@ def gerar_relatorio_filtrado_pdf(materiais_qs, filtros_desc, tipo='inventario'):
     est = _estilos()
     W, H = landscape(A4)
     doc = SimpleDocTemplate(caminho, pagesize=landscape(A4), leftMargin=1.5*cm, rightMargin=1.5*cm,
-                           topMargin=2.5*cm, bottomMargin=2*cm)
+                           topMargin=3.5*cm, bottomMargin=2*cm)
     st = []
 
     st.append(Paragraph(titulos.get(tipo, 'RELATORIO'), est['Titulo']))
@@ -803,8 +841,23 @@ def gerar_relatorio_filtrado_pdf(materiais_qs, filtros_desc, tipo='inventario'):
     st.append(Spacer(1, 8))
 
     st.append(Paragraph(f"RELACAO DETALHADA ({len(mats)} registros)", est['Centro']))
-    st.append(Spacer(1, 4))
-    st.append(_tabela_items_landscape(mats, est))
+    st.append(Spacer(1, 6))
+    
+    if tipo in ['remessa', 'incineracao']:
+        por_vara = {}
+        for m in mats:
+            oc = m.noticiado.ocorrencia if m.noticiado else None
+            vara = oc.get_vara_display() if oc and hasattr(oc, 'get_vara_display') and oc.vara else "VARA NAO INFORMADA"
+            por_vara.setdefault(vara, []).append(m)
+            
+        for vara, mats_vara in sorted(por_vara.items()):
+            st.append(Paragraph(f"<b>DESTINO / JURISDICAO: {vara.upper()}</b> - ({len(mats_vara)} itens)", est['CorpoLeft']))
+            st.append(Spacer(1, 4))
+            st.append(_tabela_items_landscape(mats_vara, est))
+            st.append(Spacer(1, 10))
+    else:
+        st.append(_tabela_items_landscape(mats, est))
+        
     st.append(Spacer(1, 15))
 
     st.append(Paragraph(f"Cascavel/PR, {timezone.now().strftime('%d de %B de %Y')}.", est['Direita']))

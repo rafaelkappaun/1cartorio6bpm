@@ -1,0 +1,466 @@
+{% extends "painel_base.html" %}
+{% load static %}
+
+{% block title %}Caixas de Incineração | 6º BPM{% endblock %}
+{% block breadcrumb %}Incineração > Caixas{% endblock %}
+{% block h1 %}Caixas de Incineração{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-lote {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s;
+    }
+    .lote-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 12px;
+        margin-bottom: 8px;
+        transition: all 0.2s;
+    }
+    .lote-card:hover {
+        border-color: #10b981;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+    }
+    .lote-card.dragging {
+        opacity: 0.5;
+        border: 2px dashed #10b981;
+    }
+    .caixa-card {
+        background: linear-gradient(135deg, #1a3a2a 0%, #0f2920 100%);
+        border-radius: 16px;
+        padding: 20px;
+        color: white;
+    }
+    .caixa-vazia {
+        border: 2px dashed rgba(255,255,255,0.3);
+        border-radius: 16px;
+        padding: 30px;
+        text-align: center;
+        color: rgba(255,255,255,0.5);
+    }
+    .drop-zone {
+        min-height: 200px;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    .drop-zone.drag-over {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+    }
+    .badge-lote {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-pmpr-green text-white p-3 rounded-4 shadow-sm">
+                <i data-lucide="archive" width="28" height="28"></i>
+            </div>
+            <div>
+                <p class="text-pmpr-gold fw-bold mb-0 text-uppercase small">
+                    {{ lotes_sem_caixa|length }} Lotes Sem Caixa
+                </p>
+                <p class="text-muted small mb-0">Agrupe lotes em caixas para incineração em conjunto.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <a href="{% url 'caixas_incineracao' %}" class="btn btn-outline-secondary rounded-3">
+            <i data-lucide="refresh-cw" width="16"></i> Atualizar
+        </a>
+        <a href="{% url 'lotes_incineracao' %}" class="btn btn-outline-pmpr rounded-3 ms-2">
+            <i data-lucide="layers" width="16"></i> Ver Lotes
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Lotes sem Caixa -->
+    <div class="col-xl-4">
+        <div class="card card-lote border-0 shadow-sm">
+            <div class="card-header bg-warning bg-opacity-10 border-bottom p-4">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i data-lucide="inbox" width="18" class="text-warning"></i>
+                    Lotes sem Caixa
+                    <span class="badge bg-warning text-dark ms-auto">{{ lotes_sem_caixa|length }}</span>
+                </h6>
+            </div>
+            <div class="card-body p-3" style="max-height: 600px; overflow-y: auto;">
+                {% if lotes_sem_caixa %}
+                    <form method="POST" action="{% url 'criar_caixa' %}" id="formCriarCaixa">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <button type="button" onclick="selecionarTodosLotes()" class="btn btn-sm btn-outline-secondary w-100 mb-2">
+                                Selecionar Todos ({{ lotes_sem_caixa|length }})
+                            </button>
+                        </div>
+                        <div id="listaLotesSemCaixa">
+                            {% for lote in lotes_sem_caixa %}
+                            <div class="lote-card draggable-lote" data-lote-id="{{ lote.id }}" draggable="true">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="lotes_selecionados" value="{{ lote.id }}" class="form-check-input lote-check" id="lote{{ lote.id }}">
+                                        <label class="form-check-label fw-bold text-pmpr-green" for="lote{{ lote.id }}">
+                                            {{ lote.identificador }}
+                                        </label>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <span class="badge badge-lote bg-light text-dark">{{ lote.processos_count }} procs</span>
+                                        <span class="badge badge-lote bg-secondary">{{ lote.materiais.count }} itens</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-1">{{ lote.data_criacao|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" id="btnCriarCaixa" disabled class="btn btn-pmpr w-100 fw-bold">
+                                <i data-lucide="plus-circle" width="16"></i> Criar Nova Caixa com Selecionados
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i data-lucide="check-circle" width="48" class="mb-2 opacity-25"></i>
+                        <p class="mb-0 small fw-bold text-uppercase">Todos os lotes estão em caixas</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Caixas Abertas -->
+    <div class="col-xl-8">
+        <div class="card card-lote border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom p-4">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i data-lucide="package" width="18" class="text-pmpr-gold"></i>
+                    Caixas Abertas
+                    <span class="badge bg-pmpr-green text-white ms-auto">{{ caixas_abertas|length }}</span>
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                {% if caixas_abertas %}
+                    <div class="row g-3">
+                        {% for caixa in caixas_abertas %}
+                        <div class="col-md-6">
+                            <div class="caixa-card h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="fw-bold mb-0 text-pmpr-gold">{{ caixa.identificador }}</h5>
+                                        <small class="text-white-50">{{ caixa.data_criacao|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                    <span class="badge bg-warning text-dark">{{ caixa.lotes_count }} lotes</span>
+                                </div>
+                                
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <h4 class="mb-0 fw-bold">{{ caixa.processos_count }}</h4>
+                                        <small class="text-white-50 text-uppercase">Processos</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 fw-bold">{{ caixa.materiais_count }}</h4>
+                                        <small class="text-white-50 text-uppercase">Itens</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 fw-bold">{{ caixa.peso_total|floatformat:2 }}kg</h4>
+                                        <small class="text-white-50 text-uppercase">Peso</small>
+                                    </div>
+                                </div>
+
+                                <!-- Lotes dentro da caixa -->
+                                <div class="drop-zone bg-dark bg-opacity-25 p-2 mb-3" data-caixa-id="{{ caixa.id }}" 
+                                     ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, {{ caixa.id }})">
+                                    {% for lote in caixa.lotes.all %}
+                                    <div class="lote-card bg-white bg-opacity-10 text-white mb-2" data-lote-id="{{ lote.id }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="fw-bold">{{ lote.identificador }}</span>
+                                                <small class="d-block text-white-50">{{ lote.processos_count }} procs</small>
+                                            </div>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-light" onclick="moverLote({{ lote.id }})" title="Mover para outra caixa">
+                                                    <i data-lucide="arrow-right-circle" width="14"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" onclick="removerDaCaixa({{ lote.id }})" title="Remover da caixa">
+                                                    <i data-lucide="x-circle" width="14"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center text-white-50 py-4">
+                                        <i data-lucide="package" width="32" class="mb-2 opacity-50"></i>
+                                        <p class="mb-0 small">Arraste lotes aqui</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Ações -->
+                                <div class="d-flex gap-2">
+                                    <button type="button" onclick="imprimirEspelho({{ caixa.id }})" class="btn btn-outline-light btn-sm flex-fill">
+                                        <i data-lucide="file-text" width="14"></i> Espelho
+                                    </button>
+                                    <button type="button" onclick="imprimirCertidao({{ caixa.id }})" class="btn btn-outline-light btn-sm flex-fill">
+                                        <i data-lucide="printer" width="14"></i> Certidão
+                                    </button>
+                                    <button type="button" onclick="concluirCaixa({{ caixa.id }})" class="btn btn-success btn-sm fw-bold flex-fill">
+                                        <i data-lucide="check-circle" width="14"></i> Concluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i data-lucide="archive" width="48" class="mb-2 opacity-25"></i>
+                        <p class="mb-0 small fw-bold text-uppercase">Nenhuma caixa aberta</p>
+                        <small>Selecione lotes e clique em "Criar Nova Caixa"</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Caixas Concluídas -->
+        {% if caixas_concluidas %}
+        <div class="card card-lote border-0 shadow-sm mt-4">
+            <div class="card-header bg-secondary bg-opacity-10 border-bottom p-4">
+                <h6 class="mb-0 fw-bold text-secondary d-flex align-items-center gap-2">
+                    <i data-lucide="check-circle" width="18"></i>
+                    Caixas Incineradas (Recentes)
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Caixa</th>
+                                <th>Lotes</th>
+                                <th>Processos</th>
+                                <th>Data Incineração</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caixa in caixas_concluidas %}
+                            <tr class="text-muted">
+                                <td class="fw-bold">{{ caixa.identificador }}</td>
+                                <td>{{ caixa.lotes_count }}</td>
+                                <td>{{ caixa.processos_count }}</td>
+                                <td>{{ caixa.data_incineracao|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <button type="button" onclick="imprimirEspelho({{ caixa.id }})" class="btn btn-sm btn-outline-secondary">
+                                        <i data-lucide="file-text" width="14"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para mover lote -->
+<div class="modal fade" id="modalMoverLote" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mover Lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'mover_lote_entre_caixas' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="lote_id" id="loteIdMover">
+                    <p>Lote: <strong id="loteNomeMover"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label">Selecione a caixa de destino:</label>
+                        <select name="caixa_destino_id" class="form-select" id="caixaDestinoSelect">
+                            <option value="">-- Sem Caixa --</option>
+                            {% for caixa in caixas_abertas %}
+                            <option value="{{ caixa.id }}">{{ caixa.identificador }} ({{ caixa.lotes_count }} lotes)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-pmpr">Mover</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const loteChecks = document.querySelectorAll('.lote-check');
+    const btnCriar = document.getElementById('btnCriarCaixa');
+
+    function atualizarBotaoCriar() {
+        const marcados = document.querySelectorAll('.lote-check:checked').length;
+        btnCriar.disabled = marcados === 0;
+        if (marcados > 0) {
+            btnCriar.innerHTML = `<i data-lucide="plus-circle" width="16"></i> Criar Caixa com ${marcados} Lote(s)`;
+        } else {
+            btnCriar.innerHTML = `<i data-lucide="plus-circle" width="16"></i> Criar Nova Caixa com Selecionados`;
+        }
+        lucide.createIcons();
+    }
+
+    loteChecks.forEach(c => c.addEventListener('change', atualizarBotaoCriar));
+
+    window.selecionarTodosLotes = function() {
+        const todosMarcados = document.querySelectorAll('.lote-check:checked').length === loteChecks.length;
+        loteChecks.forEach(c => c.checked = !todosMarcados);
+        atualizarBotaoCriar();
+    };
+
+    // Drag and Drop
+    document.querySelectorAll('.draggable-lote').forEach(el => {
+        el.addEventListener('dragstart', handleDragStart);
+        el.addEventListener('dragend', handleDragEnd);
+    });
+
+    function handleDragStart(e) {
+        e.target.classList.add('dragging');
+        e.dataTransfer.setData('loteId', e.target.dataset.loteId);
+        e.dataTransfer.setData('source', 'lista');
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, caixaId) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        
+        const loteId = e.dataTransfer.getData('loteId');
+        const source = e.dataTransfer.getData('source');
+        
+        if (source === 'lista') {
+            fetch(`/caixas/adicionar-lote/${caixaId}/${loteId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            }).then(() => location.reload());
+        } else {
+            fetch(`/caixas/mover-lote/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ lote_id: loteId, caixa_destino_id: caixaId })
+            }).then(() => location.reload());
+        }
+    }
+
+    window.moverLote = function(loteId) {
+        const loteCard = document.querySelector(`[data-lote-id="${loteId}"]`);
+        const loteNome = loteCard.querySelector('.fw-bold')?.textContent || `Lote ${loteId}`;
+        
+        document.getElementById('loteIdMover').value = loteId;
+        document.getElementById('loteNomeMover').textContent = loteNome;
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalMoverLote'));
+        modal.show();
+    };
+
+    window.removerDaCaixa = function(loteId) {
+        Swal.fire({
+            title: 'Remover da Caixa?',
+            text: "O lote voltará para a lista de lotes sem caixa.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#1a3a2a',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Remover',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/caixas/remover-lote/${loteId}/`;
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                form.appendChild(csrfInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    };
+
+    window.concluirCaixa = function(caixaId) {
+        Swal.fire({
+            title: 'Confirmar Incineração?',
+            text: "TODOS os lotes dentro desta caixa serão marcados como INCINERADOS. Esta ação não pode ser desfeita!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Incinerar Tudo',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/caixas/concluir/${caixaId}/`;
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                form.appendChild(csrfInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    };
+
+    window.imprimirEspelho = function(caixaId) {
+        window.open(`/caixas/espelho/${caixaId}/`, '_blank');
+    };
+
+    window.imprimirCertidao = function(caixaId) {
+        window.open(`/caixas/certidao/${caixaId}/`, '_blank');
+    };
+
+    lucide.createIcons();
+</script>
+{% endblock %}

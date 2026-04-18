@@ -1,0 +1,166 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Certidão de Incineração - 6º BPM</title>
+    <style>
+        @media print { .no-print { display: none; } body { margin: 0; padding: 15px; } }
+        body { font-family: 'Times New Roman', serif; color: #000; line-height: 1.4; background: #fff; font-size: 12px; }
+        .page { padding: 40px; max-width: 800px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .brasao { height: 80px; }
+        
+        .titulo { font-size: 18px; font-weight: bold; text-transform: uppercase; margin: 20px 0; text-align: center; }
+        .subtitulo { font-size: 14px; text-align: center; margin-bottom: 30px; }
+        
+        .identificador { 
+            font-size: 24px; 
+            font-weight: bold; 
+            text-align: center; 
+            background-color: #1a3a2a; 
+            color: #fff; 
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .resumo { 
+            display: flex; 
+            justify-content: center; 
+            gap: 30px; 
+            font-weight: bold; 
+            margin: 20px 0;
+            border: 1px solid #000;
+            padding: 15px;
+        }
+
+        .corpo { text-align: justify; margin: 20px 0; }
+        .corpo p { margin: 10px 0; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #000; padding: 8px; font-size: 11px; }
+        th { background-color: #f0f0f0; text-transform: uppercase; text-align: center; }
+        
+        .footer-assinatura { margin-top: 60px; display: flex; justify-content: space-around; }
+        .assinatura-box { text-align: center; width: 30%; }
+        .assinatura-linha { border-top: 1px solid #000; padding-top: 5px; font-size: 10px; }
+        
+        .footer { margin-top: 40px; font-size: 10px; text-align: center; color: #666; }
+        .footer p { margin: 5px 0; }
+
+        .observacao { 
+            background: #f9f9f9; 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin: 20px 0;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <div class="header">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 15px;">
+            <img src="{% static 'img/brasao_parana.svg' %}" class="brasao" alt="Paraná" style="height: 70px;">
+            <div style="text-align: center;">
+                <div style="font-size: 14px; font-weight: bold;">POLÍCIA MILITAR DO PARANÁ</div>
+                <div style="font-size: 12px;">6º BATALHÃO DE POLÍCIA MILITAR - CASCAVEL</div>
+                <div style="font-size: 12px; font-weight: bold;">SEÇÃO DE CUSTÓDIA DE ENTORPECENTES</div>
+            </div>
+            <img src="{% static 'img/brasao_pmpr.svg' %}" class="brasao" alt="PMPR" style="height: 70px;">
+        </div>
+    </div>
+
+    <div class="titulo">CERTIDÃO DE DESTRUIÇÃO DE SUBSTÂNCIAS ENTORPECENTES</div>
+    <div class="subtitulo">(Documento para Assinatura Antecipada)</div>
+
+    <div class="identificador">
+        CAIXA {{ caixa.identificador }}
+    </div>
+
+    <div class="resumo">
+        <span>LOTES: {{ lotes|length }}</span>
+        <span>PROCESSOS: {{ caixa.processos_count }}</span>
+        <span>ITENS: {{ caixa.materiais_count }}</span>
+    </div>
+
+    <div class="corpo">
+        <p>O 6º Batalhão de Polícia Militar de Cascavel/PR vem respeitosamente requerer a <strong>destruição térmica (incineração)</strong> das substâncias entorpecentes relacionadas abaixo, em conformidade com o <strong>Art. 50, parágrafo 5º, da Lei 11.343/2006</strong>.</p>
+        
+        <p>Os materiais estão organizados em {{ lotes|length }} lote(s) de incineração, conforme relação abaixo:</p>
+    </div>
+
+    <!-- Lista de Lotes -->
+    <table>
+        <thead>
+            <tr>
+                <th width="30%">Identificação do Lote</th>
+                <th width="20%">Data Formação</th>
+                <th width="25%">Qtd. Processos</th>
+                <th width="25%">Qtd. Itens</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lote in lotes %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ lote.identificador }}</td>
+                <td style="text-align: center;">{{ lote.data_criacao|date:"d/m/Y" }}</td>
+                <td style="text-align: center;">{{ lote.processos_count }}</td>
+                <td style="text-align: center;">{{ lote.materiais.count }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="background: #f0f0f0; font-weight: bold;">
+                <td colspan="2" style="text-align: right;">TOTAL GERAL:</td>
+                <td style="text-align: center;">{{ caixa.processos_count }}</td>
+                <td style="text-align: center;">{{ caixa.materiais_count }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="corpo" style="margin-top: 30px;">
+        <p>Requeremos que seja aposta a <strong>assinatura e o carimbo</strong> neste Documento, bem como emitida a <strong>autorização judicial</strong> para a destruição das substâncias acima relacionadas.</p>
+        
+        <p>Após a incineração, este Documento deverá ser devolvido ao 6º BPM para baixa no sistema.</p>
+    </div>
+
+    <div class="footer-assinatura">
+        <div class="assinatura-box">
+            <div class="assinatura-linha">
+                <strong>_______________________________</strong><br>
+                Comandante do 6º BPM<br>
+                Matrícula e Assinatura
+            </div>
+        </div>
+        <div class="assinatura-box">
+            <div class="assinatura-linha">
+                <strong>_______________________________</strong><br>
+                Promotor(a) de Justiça<br>
+                Nome, Matrícula e Assinatura
+            </div>
+        </div>
+        <div class="assinatura-box">
+            <div class="assinatura-linha">
+                <strong>_______________________________</strong><br>
+                Juiz(a) de Direito<br>
+                Nome e Assinatura
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Cascavel/PR, {% now "d" %} de {% now "F" %} de {% now "Y" }}.</p>
+        <p style="margin-top: 20px;">Documento gerado pelo Sistema de Custódia 6º BPM - {% now "d/m/Y H:i" %}</p>
+    </div>
+</div>
+
+<div class="no-print" style="text-align: center; margin-top: 20px; padding: 30px;">
+    <button onclick="window.print()" style="padding: 15px 40px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #1a3a2a; color: #fff; border: none; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        🖨️ IMPRIMIR CERTIDÃO
+    </button>
+    <br><br>
+    <a href="{% url 'caixas_incineracao' %}" style="text-decoration: none; color: #666; font-size: 14px;">← Voltar para Caixas</a>
+</div>
+
+</body>
+</html>
