@@ -595,75 +595,53 @@ import uuid
 
 @csrf_exempt
 def api_receber_projudi(request):
+    """
+    NÃO grava nada automaticamente.
+    Valida duplicidade e retorna a URL do formulário pré-preenchido
+    para o usuário conferir e salvar manualmente.
+    """
     if request.method == 'POST':
         try:
             dados = json.loads(request.body)
-            processo = dados.get('processo')
-            
+            processo = dados.get('processo', '').strip()
+
             if not processo:
                 return JsonResponse({'erro': 'Número do processo não informado.'}, status=400)
-                
+
+            # Verifica duplicidade
             ocorrencia = Ocorrencia.objects.filter(processo=processo).first()
             if ocorrencia:
-                url_retorno = request.build_absolute_uri(f'/gestao/cadastro/adicionar/{ocorrencia.id}/')
+                url_edicao = request.build_absolute_uri(f'/gestao/cadastro/adicionar/{ocorrencia.id}/')
                 return JsonResponse({
-                    'mensagem': 'Processo já existe no Cartório.',
+                    'mensagem': f'⚠️ Processo {processo} já existe no Cartório! Abrindo para adicionar novos itens...',
                     'existe': True,
-                    'url': url_retorno
+                    'url': url_edicao
                 })
-            
-            provisional_bou = f"PROJ-{str(uuid.uuid4())[:8].upper()}"
-            ocorrencia = Ocorrencia.objects.create(
-                bou=provisional_bou,
-                processo=processo,
-                vara='', 
-                natureza_penal=dados.get('natureza', '').upper()
-            )
-            
-            noticiado_nome = dados.get('noticiado', 'NÃO INFORMADO').upper()
-            noticiado = Noticiado.objects.create(ocorrencia=ocorrencia, nome=noticiado_nome)
-            
-            substancia = dados.get('substancia', '').upper()
-            
-            try:
-                peso = str(dados.get('quantidade', '0')).replace(',', '.')
-                peso_float = float(peso)
-            except:
-                peso_float = 0
-            
-            if substancia:
-                # Tenta casar a substancia com um texto aproximado
-                matched = False
-                for c in DROGAS_CHOICES:
-                    if substancia in c[1].upper() or c[1].upper() in substancia:
-                        substancia = c[0]
-                        matched = True
-                        break
-                if not matched:
-                    # Se não vier exato, coloca como MACONHA como default provisorio e anota
-                    ocorrencia.observacao = f"DADOS DO PROJUDI - Substância original: {substancia}"
-                    ocorrencia.save()
-                    substancia = 'MACONHA'
 
-                Material.objects.create(
-                    noticiado=noticiado,
-                    categoria='ENTORPECENTE',
-                    substancia=substancia,
-                    peso_estimado=peso_float,
-                    unidade='G',
-                    status='RECEBIDO'
-                )
-                
-            url_retorno = request.build_absolute_uri(f'/gestao/cadastro/adicionar/{ocorrencia.id}/')
+            # Monta URL do formulário com dados nos query params (sem gravar nada)
+            from urllib.parse import urlencode
+            params = {
+                'processo':  processo,
+                'noticiado': dados.get('noticiado', ''),
+                'natureza':  dados.get('natureza', ''),
+                'substancia': dados.get('substancia', ''),
+                'quantidade': dados.get('quantidade', ''),
+                'origem':    'projudi',
+            }
+            query_string = urlencode({k: v for k, v in params.items() if v})
+            url_formulario = request.build_absolute_uri(f'/gestao/cadastro/?{query_string}')
+
             return JsonResponse({
-                'mensagem': 'Dados importados provisoriamente. Finalize os itens.',
+                'mensagem': '✅ Dados extraídos! Verifique e confirme o cadastro antes de salvar.',
                 'existe': False,
-                'url': url_retorno
+                'url': url_formulario
             })
+
         except Exception as e:
             import traceback
             traceback.print_exc()
             return JsonResponse({'erro': str(e)}, status=500)
+
     return JsonResponse({'erro': 'Método não permitido.'}, status=405)
 
 @login_required

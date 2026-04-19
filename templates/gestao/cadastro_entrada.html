@@ -487,5 +487,68 @@
             i.value = i.value.replace(/\./g, '').replace(',', '.');
         });
     });
+
+    // -------------------------------------------------------
+    // PRÉ-PREENCHIMENTO VIA EXTENSÃO DO PROJUDI
+    // -------------------------------------------------------
+    (function preencherDadosProjudi() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('origem') !== 'projudi') return;
+
+        // Banner de aviso
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-warning border-0 rounded-4 d-flex align-items-center gap-3 mb-4';
+        banner.style.borderLeft = '4px solid #c5a059';
+        banner.innerHTML = `
+            <span style="font-size:1.6rem">📋</span>
+            <div>
+                <strong>Dados importados do Projudi (extensão Chrome)</strong><br>
+                <small>Confira todos os campos abaixo antes de salvar. Nenhum dado foi gravado ainda.</small>
+            </div>`;
+        const form = document.getElementById('formPrincipal');
+        form.parentElement.insertBefore(banner, form);
+
+        // Preenche campos da Ocorrência
+        const setVal = (name, val) => {
+            const el = document.querySelector(`[name="${name}"]`);
+            if (el && val) el.value = val;
+        };
+
+        setVal('processo', params.get('processo'));
+        setVal('natureza_penal', params.get('natureza'));
+
+        // Noticiado (primeiro campo de nome)
+        const nomeInput = document.querySelector('[name="noticiados_nome[]"]');
+        if (nomeInput && params.get('noticiado')) {
+            nomeInput.value = params.get('noticiado').toUpperCase();
+        }
+
+        // Preenche o BOU prefixo com o ano atual se não estiver preenchido
+        const anoEl = document.getElementById('ano_bou_prefix');
+        const bHidden = document.getElementById('bou_completo');
+        if (anoEl && !anoEl.innerText) {
+            anoEl.innerText = new Date().getFullYear() + '/';
+        }
+
+        // Observação: substância e quantidade ficam em branco para o usuário escolher corretamente
+        // conforme a categoria real do caso (pode não ser entorpecente)
+        const catSelect = document.querySelector('[name="categorias[]"]');
+        if (catSelect) {
+            // Detecta pela natureza se é entorpecente
+            const natureza = (params.get('natureza') || '').toUpperCase();
+            const ehDroga = natureza.includes('ENTORP') || natureza.includes('TRÁFICO') ||
+                           natureza.includes('TRAFICO') || natureza.includes('DROGA') ||
+                           natureza.includes('PORTE');
+
+            if (!ehDroga) {
+                // Muda para "OUTROS" e esconde campo de entorpecente
+                catSelect.value = 'OUTROS';
+                catSelect.dispatchEvent(new Event('change'));
+            }
+        }
+
+        console.log("Projudi: pré-preenchimento concluído.", Object.fromEntries(params));
+    })();
+
 </script>
 {% endblock %}
