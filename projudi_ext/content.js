@@ -1,83 +1,147 @@
 // content.js - Extensão para o Projudi
+// Integração: Cartório 6º BPM → PythonAnywhere
 console.log("Extensão Integração Cartório 6 BPM Projudi iniciada!");
 
-// Função para tentar extrair os dados da página
-function extrairDadosProjudi() {
-    // Como não temos o HTML exato do Projudi, construímos uma extração baseada em seletores típicos,
-    // ou buscando as labels no texto da página para encontrar o valor ao lado.
-    
-    let processo = "";
-    let noticiado = "";
-    let substancia = "MACONHA"; // Default fallback
-    let quantidade = "0";
+// -------------------------------------------------------
+// Busca o valor de um campo pelo texto do seu label
+// dentro de um container específico
+// -------------------------------------------------------
+function buscarValorPorLabel(container, textoLabel) {
+    if (!container) return "";
+    const labels = Array.from(container.querySelectorAll('.form_label, label, th, span, b, strong, td'));
+    for (let label of labels) {
+        const texto = label.innerText.trim().toUpperCase();
+        if (texto.includes(textoLabel.toUpperCase())) {
+            // Tenta pegar o próximo irmão direto
+            let el = label.nextElementSibling;
+            if (el && el.innerText.trim()) return el.innerText.trim();
+            // Tenta o próximo irmão do pai
+            el = label.parentElement ? label.parentElement.nextElementSibling : null;
+            if (el && el.innerText.trim()) return el.innerText.trim();
+        }
+    }
+    return "";
+}
 
-    // Exemplo de busca de Processo por regex no texto da página
-    const matchProcesso = document.body.innerText.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
-    if (matchProcesso) {
-        processo = matchProcesso[0];
-    } else {
-        // Fallback de seletor ID genérico
-        const elProcesso = document.querySelector('#numeroProcesso') || document.querySelector('.numero-processo');
-        if(elProcesso) processo = elProcesso.innerText.trim();
+// -------------------------------------------------------
+// Extração principal dos dados da página do Projudi
+// -------------------------------------------------------
+function extrairDadosProjudi() {
+    let processo  = "";
+    let noticiado = "";
+    let substancia = "MACONHA";
+    let quantidade = "0";
+    let natureza   = "";
+
+    // Container principal (#divDadosProcesso)
+    const divProcesso = document.getElementById('divDadosProcesso');
+
+    // ---- 1. NÚMERO DO PROCESSO ----
+    if (divProcesso) {
+        // Primeiro tenta pelo label "Número da Justiça" (informado pelo usuário)
+        processo = buscarValorPorLabel(divProcesso, 'Número da Justiça');
+
+        // Fallback: regex formato CNJ dentro do container
+        if (!processo) {
+            const match = divProcesso.innerText.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+            if (match) processo = match[0];
+        }
+    }
+    // Fallback global: regex formato CNJ em toda a página
+    if (!processo) {
+        const match = document.body.innerText.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+        if (match) processo = match[0];
     }
 
-    // Exemplo de busca para 'Réu', 'Noticiado' ou 'Indiciado'
-    // Aqui usamos um seletor XPath simples (como aproximação) ou percorremos elementos
-    const labels = Array.from(document.querySelectorAll('label, th, span, td, strong, b'));
-    for (let el of labels) {
-        let texto = el.innerText.toUpperCase();
-        if (texto.includes('RÉU:') || texto.includes('RÉU :') || texto.includes('NOTICIADO:')) {
-            let valorEl = el.nextElementSibling || el.parentElement.nextElementSibling;
-            if (valorEl) {
-                noticiado = valorEl.innerText.trim();
-                break;
+    // ---- 2. RÉU / NOTICIADO ----
+    if (divProcesso) {
+        noticiado = buscarValorPorLabel(divProcesso, 'Réu') ||
+                    buscarValorPorLabel(divProcesso, 'Autuado') ||
+                    buscarValorPorLabel(divProcesso, 'Parte');
+    }
+    if (!noticiado) {
+        const labels = Array.from(document.querySelectorAll('.form_label, label, th, td, span'));
+        for (let el of labels) {
+            const t = el.innerText.trim().toUpperCase();
+            if (t === 'RÉU:' || t === 'RÉU' || t.startsWith('NOTICIADO')) {
+                const prox = el.nextElementSibling || el.parentElement?.nextElementSibling;
+                if (prox && prox.innerText.trim()) { noticiado = prox.innerText.trim(); break; }
             }
         }
     }
 
-    // Aproximação para buscar natureza / drogas em relatórios
-    if (document.body.innerText.toUpperCase().includes('COCAÍNA')) substancia = 'COCAINA';
-    if (document.body.innerText.toUpperCase().includes('CRACK')) substancia = 'CRACK';
+    // ---- 3. NATUREZA / CLASSE ----
+    if (divProcesso) {
+        natureza = buscarValorPorLabel(divProcesso, 'Natureza') ||
+                   buscarValorPorLabel(divProcesso, 'Classe') ||
+                   buscarValorPorLabel(divProcesso, 'Crime');
+    }
 
-    // Capturando quantidade (Ex: 0,550 g) - Regex genérica perto da palavra droga ou peso
-    const matchPeso = document.body.innerText.match(/(\d+[\.\,]\d+)\s*(g|gramas|kg|quilos)/i);
-    if (matchPeso) {
-        quantidade = matchPeso[1];
+    // ---- 4. SUBSTÂNCIA (detecta pelo texto geral da página) ----
+    const textoGeral = document.body.innerText.toUpperCase();
+    if (textoGeral.includes('COCAÍNA') || textoGeral.includes('COCAINA')) substancia = 'COCAINA';
+    if (textoGeral.includes('CRACK')) substancia = 'CRACK';
+    if (textoGeral.includes('ANFETAMINA')) substancia = 'ANFETAMINA';
+    if (textoGeral.includes('ECSTASY') || textoGeral.includes('MDMA')) substancia = 'ECSTASY';
+
+    // ---- 5. QUANTIDADE/PESO ----
+    const matchPeso = textoGeral.match(/(\d+[\.,]\d+)\s*(G|KG|GRAMAS?|QUILOS?)/i);
+    if (matchPeso) quantidade = matchPeso[1].replace(',', '.');
+
+    // ---- DIAGNÓSTICO (F12 → Console para depuração) ----
+    console.log("=== PROJUDI EXTRACTOR ===");
+    console.log("  Processo :", processo);
+    console.log("  Noticiado:", noticiado);
+    console.log("  Natureza :", natureza);
+    console.log("  Substância:", substancia, "| Qtd:", quantidade);
+    if (divProcesso) {
+        console.log("  [divDadosProcesso] Conteúdo (400 chars):");
+        console.log("  ", divProcesso.innerText.substring(0, 400));
+    } else {
+        console.warn("  #divDadosProcesso NÃO encontrado nesta página.");
     }
 
     return {
-        processo: processo || prompt("Número do Processo (Projudi) não encontrado. Digite manualmente:"),
-        noticiado: noticiado || "NOME NÃO ENCONTRADO",
+        processo:  processo || prompt("Número do Processo não encontrado automaticamente.\nDigite manualmente (ex: 0000000-00.0000.8.16.0000):"),
+        noticiado: noticiado || "NÃO ENCONTRADO",
         substancia: substancia,
         quantidade: quantidade,
-        natureza: "Art. 28 - Uso de Entorpecentes" // Exemplo padrão
+        natureza:  natureza || "A classificar"
     };
 }
 
-// Criação do Botão Flutuante
+// -------------------------------------------------------
+// Botão Flutuante
+// -------------------------------------------------------
 const btn = document.createElement('button');
 btn.innerText = "Enviar para Estatística (6º BPM)";
-btn.style.position = 'fixed';
-btn.style.bottom = '20px';
-btn.style.right = '20px';
-btn.style.zIndex = '999999';
-btn.style.padding = '15px 20px';
-btn.style.backgroundColor = '#1a3a2a'; // Verde PMPR
-btn.style.color = '#c5a059'; // Dourado
-btn.style.border = '2px solid #c5a059';
-btn.style.borderRadius = '8px';
-btn.style.fontFamily = 'Arial, sans-serif';
-btn.style.fontWeight = 'bold';
-btn.style.cursor = 'pointer';
-btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+btn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999999;
+    padding: 14px 20px;
+    background-color: #1a3a2a;
+    color: #c5a059;
+    border: 2px solid #c5a059;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    transition: transform 0.1s ease;
+`;
 
-btn.addEventListener('mouseover', () => btn.style.transform = 'scale(1.05)');
-btn.addEventListener('mouseout', () => btn.style.transform = 'scale(1)');
+btn.addEventListener('mouseover', () => btn.style.transform = 'scale(1.04)');
+btn.addEventListener('mouseout',  () => btn.style.transform = 'scale(1)');
 
-// Ação do Botão
+// -------------------------------------------------------
+// Ação ao clicar
+// -------------------------------------------------------
 btn.addEventListener('click', async () => {
     btn.innerText = "Extraindo e Enviando...";
-    btn.style.opacity = '0.8';
+    btn.style.opacity = '0.7';
 
     const dados = extrairDadosProjudi();
 
@@ -91,9 +155,7 @@ btn.addEventListener('click', async () => {
     try {
         const response = await fetch('https://1cartorio6bpm.pythonanywhere.com/api/receber_projudi/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
         });
 
@@ -101,21 +163,17 @@ btn.addEventListener('click', async () => {
 
         if (response.ok) {
             alert(result.mensagem);
-            if (result.url) {
-                // Abre o sistema do cartório em uma nova aba para o Policial conferir e editar
-                window.open(result.url, '_blank');
-            }
+            if (result.url) window.open(result.url, '_blank');
         } else {
             alert("Erro no Cartório 6 BPM: " + (result.erro || "Falha desconhecida."));
         }
     } catch (err) {
         console.error(err);
-        alert("Erro de conexão. O servidor do Django (Cartório) está rodando no 127.0.0.1:8000?");
+        alert("Erro de conexão com o servidor do Cartório. Verifique se está logado em:\nhttps://1cartorio6bpm.pythonanywhere.com");
     } finally {
         btn.innerText = "Enviar para Estatística (6º BPM)";
         btn.style.opacity = '1';
     }
 });
 
-// Adiciona o botão ao DOM
 document.body.appendChild(btn);
