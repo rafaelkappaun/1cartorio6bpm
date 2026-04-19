@@ -158,6 +158,7 @@
                                     <tr><th>Unidade / Batalhão</th><td><input class="form-control form-control-sm" id="tc_unidade"></td></tr>
                                     <tr><th>Policial (Nome)</th><td><input class="form-control form-control-sm" id="tc_policial"></td></tr>
                                     <tr><th>Graduação</th><td><input class="form-control form-control-sm" id="tc_graduacao"></td></tr>
+                                    <tr><th>Observação Extraída</th><td><textarea class="form-control form-control-sm" id="tc_observacao" rows="2"></textarea></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -181,6 +182,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 d-none" id="tcModalFooter">
+                    <button type="button" class="btn btn-outline-danger rounded-pill me-auto" onclick="resetarDadosTC()">Limpar Leitura</button>
                     <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" id="btnPreencherForm">
                         <i data-lucide="check-circle" class="me-2" style="width:16px;height:16px;"></i>
@@ -270,6 +272,10 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-md-9">
+                    <label class="form-label-custom">Observações Gerais da Ocorrência</label>
+                    <input type="text" name="observacao" id="observacao_geral" class="form-control form-control-custom" placeholder="Informações extras extraídas do TC..." value="{{ ocorrencia.observacao|default:'' }}">
+                </div>
             </div>
         </div>
     </div>
@@ -336,9 +342,9 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="section-geral d-none">
-                                <label class="form-label-custom">Descrição do Objeto</label>
-                                <input type="text" name="descricao_geral[]" class="form-control form-control-custom" placeholder="Marca, cor, etc...">
+                            <div class="section-geral">
+                                <label class="form-label-custom">Descrição / Observação do Item</label>
+                                <input type="text" name="descricao_geral[]" class="form-control form-control-custom" placeholder="Detalhes, marca, cor, embalagem...">
                             </div>
                             <div class="section-dinheiro d-none">
                                 <label class="form-label-custom">Valor (R$)</label>
@@ -604,7 +610,23 @@
         if (e.dataTransfer.files.length) handleTCFile(e.dataTransfer.files[0]);
     };
 
-    let dadosTCGlobal = null;
+    let dadosTCGlobal = {
+        bou: '', data_registro: '', processo: '', natureza_penal: '', vara: '',
+        unidade_origem: '', policial_nome: '', policial_graduacao: '', policial_rg: '',
+        noticiados: [], itens_apreendidos: [], observacao: '', texto_bruto: ''
+    };
+
+    function resetarDadosTC() {
+        dadosTCGlobal = {
+            bou: '', data_registro: '', processo: '', natureza_penal: '', vara: '',
+            unidade_origem: '', policial_nome: '', policial_graduacao: '', policial_rg: '',
+            noticiados: [], itens_apreendidos: [], observacao: '', texto_bruto: ''
+        };
+        document.getElementById('tcUploadArea').classList.remove('d-none');
+        document.getElementById('tcResultado').classList.add('d-none');
+        document.getElementById('tcModalFooter').classList.add('d-none');
+        document.getElementById('tcTextoBruto').textContent = '';
+    }
 
     async function handleTCFile(file) {
         const loading = document.getElementById('tcLoading');
@@ -614,8 +636,7 @@
 
         uploadArea.classList.add('d-none');
         loading.classList.remove('d-none');
-        resultado.classList.add('d-none');
-        footer.classList.add('d-none');
+        // resultado.classList.add('d-none'); // Não esconde o resultado para permitir ver o progresso
 
         const formData = new FormData();
         formData.append('arquivo', file);
@@ -631,24 +652,49 @@
             loading.classList.add('d-none');
 
             if (res.sucesso) {
-                dadosTCGlobal = res.dados;
+                // Mesclagem Inteligente
+                const d = res.dados;
+                if (d.bou) dadosTCGlobal.bou = d.bou;
+                if (d.data_registro) dadosTCGlobal.data_registro = d.data_registro;
+                if (d.processo) dadosTCGlobal.processo = d.processo;
+                if (d.natureza_penal) dadosTCGlobal.natureza_penal = d.natureza_penal;
+                if (d.vara) dadosTCGlobal.vara = d.vara;
+                if (d.unidade_origem) dadosTCGlobal.unidade_origem = d.unidade_origem;
+                if (d.policial_nome) dadosTCGlobal.policial_nome = d.policial_nome;
+                if (d.policial_graduacao) dadosTCGlobal.policial_graduacao = d.policial_graduacao;
+                if (d.policial_rg) dadosTCGlobal.policial_rg = d.policial_rg;
+                if (d.observacao) dadosTCGlobal.observacao += (dadosTCGlobal.observacao ? "\n---\n" : "") + d.observacao;
+                dadosTCGlobal.texto_bruto += (dadosTCGlobal.texto_bruto ? "\n\n=== NOVO ARQUIVO ===\n\n" : "") + d.texto_bruto;
+
+                // Noticiados (evita duplicatas pelo nome)
+                d.noticiados.forEach(n => {
+                    if (!dadosTCGlobal.noticiados.find(ex => ex.nome.toUpperCase() === n.nome.toUpperCase())) {
+                        dadosTCGlobal.noticiados.push(n);
+                    }
+                });
+
+                // Itens (adiciona todos)
+                dadosTCGlobal.itens_apreendidos.push(...d.itens_apreendidos);
+
+                // UI UPDATE
                 resultado.classList.remove('d-none');
                 footer.classList.remove('d-none');
+                uploadArea.classList.remove('d-none'); // Permite adicionar mais
 
-                // Preenche campos do modal para conferência
-                document.getElementById('tc_bou').value = res.dados.bou || '';
-                document.getElementById('tc_data').value = res.dados.data_registro || '';
-                document.getElementById('tc_processo').value = res.dados.processo || '';
-                document.getElementById('tc_natureza').value = res.dados.natureza_penal || '';
-                document.getElementById('tc_vara').value = res.dados.vara || '';
-                document.getElementById('tc_unidade').value = res.dados.unidade_origem || '';
-                document.getElementById('tc_policial').value = res.dados.policial_nome || '';
-                document.getElementById('tc_graduacao').value = res.dados.policial_graduacao || '';
-                document.getElementById('tcTextoBruto').textContent = res.dados.texto_bruto || '';
+                document.getElementById('tc_bou').value = dadosTCGlobal.bou;
+                document.getElementById('tc_data').value = dadosTCGlobal.data_registro;
+                document.getElementById('tc_processo').value = dadosTCGlobal.processo;
+                document.getElementById('tc_natureza').value = dadosTCGlobal.natureza_penal;
+                document.getElementById('tc_vara').value = dadosTCGlobal.vara;
+                document.getElementById('tc_unidade').value = dadosTCGlobal.unidade_origem;
+                document.getElementById('tc_policial').value = dadosTCGlobal.policial_nome;
+                document.getElementById('tc_graduacao').value = dadosTCGlobal.policial_graduacao;
+                document.getElementById('tc_observacao').value = dadosTCGlobal.observacao;
+                document.getElementById('tcTextoBruto').textContent = dadosTCGlobal.texto_bruto;
 
                 // Noticiados
                 const containerNoticiados = document.getElementById('tcNoticiados');
-                containerNoticiados.innerHTML = res.dados.noticiados.map(n => `
+                containerNoticiados.innerHTML = dadosTCGlobal.noticiados.map(n => `
                     <div class="badge bg-light text-dark border p-2 me-2 mb-2">
                         ${n.nome} ${n.rg ? `(RG: ${n.rg})` : ''}
                     </div>
@@ -656,20 +702,17 @@
 
                 // Itens
                 const containerItens = document.getElementById('tcItens');
-                containerItens.innerHTML = res.dados.itens_apreendidos.map(i => `
+                containerItens.innerHTML = dadosTCGlobal.itens_apreendidos.map(i => `
                     <div class="alert alert-secondary py-1 px-2 mb-1 small d-flex justify-content-between align-items-center">
                         <span><strong>${i.categoria}</strong>: ${i.substancia || i.descricao || 'Item'}</span>
                         <span class="badge bg-dark">${i.quantidade} ${i.unidade}</span>
                     </div>
                 `).join('') || '<p class="text-muted small">Nenhum item identificado.</p>';
 
-                // Duplicata
-                const alertDup = document.getElementById('tcAlertDuplicata');
                 if (res.dados.duplicata) {
+                    const alertDup = document.getElementById('tcAlertDuplicata');
                     alertDup.classList.remove('d-none');
                     document.getElementById('tcDuplicataInfo').textContent = `BOU ${res.dados.duplicata.bou} já existe.`;
-                } else {
-                    alertDup.classList.add('d-none');
                 }
 
                 lucide.createIcons();
@@ -719,41 +762,35 @@
             document.querySelector('[name="unidade_origem"]').value = (dadosTCGlobal.unidade_origem || '').toUpperCase();
             document.querySelector('[name="policial_nome"]').value = (dadosTCGlobal.policial_nome || '').toUpperCase();
             document.querySelector('[name="policial_graduacao"]').value = (dadosTCGlobal.policial_graduacao || '').toUpperCase();
-            document.querySelector('[name="policial_rg"]').value = (dadosTCGlobal.policial_rg || '');
+            document.querySelector('[name="rg_policial"]').value = (dadosTCGlobal.policial_rg || '');
+            document.getElementById('observacao_geral').value = dadosTCGlobal.observacao || '';
 
             // 2. Noticiados e Materiais
             const container = document.getElementById('container-materiais');
             container.innerHTML = ''; // Limpa os atuais para preencher do TC
 
-            if (dadosTCGlobal.noticiados.length === 0) {
-                // Se não achou noticiados, adiciona uma linha vazia padrão
+            if (dadosTCGlobal.noticiados.length === 0 && dadosTCGlobal.itens_apreendidos.length === 0) {
+                // Se não achou nada, adiciona uma linha vazia padrão
                 document.getElementById('btnAdicionar').click();
             } else {
-                dadosTCGlobal.noticiados.forEach((not, idx) => {
-                    // Para cada noticiado, vemos se tem itens
-                    const itensDoNoticiado = dadosTCGlobal.itens_apreendidos.filter(it => it.noticiado_idx === idx);
-                    
-                    if (itensDoNoticiado.length === 0) {
-                        // Noticiado sem itens (apenas registro dele)
+                if (dadosTCGlobal.itens_apreendidos.length > 0) {
+                    dadosTCGlobal.itens_apreendidos.forEach(it => {
+                        // Associa ao primeiro noticiado por padrão ou cria linha
+                        const not = dadosTCGlobal.noticiados[0] || {nome:''};
+                        adicionarLinhaComDados(not, it);
+                    });
+                } else {
+                    // Se só tem noticiados e nada de itens reconhecidos
+                    dadosTCGlobal.noticiados.forEach(not => {
                         adicionarLinhaComDados(not, null);
-                    } else {
-                        itensDoNoticiado.forEach(it => {
-                            adicionarLinhaComDados(not, it);
-                        });
-                    }
-                });
-                
-                // Distribui itens sem noticiado definido pros noticiados existentes ou cria novas linhas
-                const itensSemNoticiado = dadosTCGlobal.itens_apreendidos.filter(it => it.noticiado_idx === undefined);
-                itensSemNoticiado.forEach(it => {
-                    adicionarLinhaComDados(dadosTCGlobal.noticiados[0] || {nome:''}, it);
-                });
+                    });
+                }
             }
 
             modalTC.hide();
             Swal.fire({
                 title: 'Importado!',
-                text: 'Dados do TC carregados no formulário. Revise antes de salvar.',
+                text: 'Dados de múltiplos TCs carregados no formulário. Revise antes de salvar.',
                 icon: 'success',
                 timer: 2000,
                 showConfirmButton: false
@@ -763,21 +800,22 @@
 
     function adicionarLinhaComDados(noticiado, item) {
         const container = document.getElementById('container-materiais');
-        const firstRowTemplate = document.querySelector('.item-row'); // Precisamos de um template
         
-        // Se o container estiver vazio, usa o template oculto ou cria um
+        // Cria uma nova linha chamando o evento do botão adicionar
         const btnAdd = document.getElementById('btnAdicionar');
-        btnAdd.click(); // Cria uma nova linha
+        btnAdd.click(); 
         
         const rows = container.querySelectorAll('.item-row');
         const lastRow = rows[rows.length - 1];
 
         // Preenche Noticiado
-        lastRow.querySelector('[name="noticiados_nome[]"]').value = (noticiado.nome || '').toUpperCase();
-        lastRow.querySelector('[name="noticiados_rg[]"]').value = noticiado.rg || '';
+        lastRow.querySelector('[name="nome_noticiado[]"]').value = (noticiado.nome || '').toUpperCase();
+        if (noticiado.rg) {
+             // Se tivermos campo de RG no item row (alguns templates tem separado, mas aqui parece que nome_noticiado[] é o principal)
+        }
 
         if (item) {
-            const catSelect = lastRow.querySelector('[name="categorias[]"]');
+            const catSelect = lastRow.querySelector('.select-categoria');
             catSelect.value = item.categoria || 'ENTORPECENTE';
             catSelect.dispatchEvent(new Event('change'));
 
@@ -787,9 +825,10 @@
                 lastRow.querySelector('.select-unidade').value = item.unidade || 'G';
             } else if (item.categoria === 'DINHEIRO') {
                 lastRow.querySelector('.mask-dinheiro').value = (item.quantidade || '0').toString().replace('.', ',');
-            } else {
-                lastRow.querySelector('[name="descricoes[]"]').value = item.descricao || '';
-            }
+            } 
+            
+            // Descrição geral
+            lastRow.querySelector('[name="descricao_geral[]"]').value = item.descricao || '';
         }
     }
 

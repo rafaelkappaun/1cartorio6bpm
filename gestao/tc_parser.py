@@ -101,6 +101,10 @@ def parsear_tc(texto: str) -> dict:
     # ── ITENS APREENDIDOS ─────────────────────────────────────────────
     itens = _extrair_itens(texto)
 
+    # ── OBSERVAÇÃO ────────────────────────────────────────────────────
+    observacao = (_primeiro(r'Observa[çc][ãa]o\s*[:\-]?\s*([^\n]+(?:\n\s+[^\n]+)*)', texto) or
+                  _primeiro(r'Hist[óo]rico\s*[:\-]?\s*([^\n]+(?:\n\s+[^\n]+)*)', texto))
+
     return {
         'bou': bou,
         'data_registro': data_registro,
@@ -114,6 +118,7 @@ def parsear_tc(texto: str) -> dict:
         'policial_rg': policial_rg,
         'noticiados': noticiados,
         'itens_apreendidos': itens,
+        'observacao': observacao,
         'texto_bruto': texto[:2000],  # Para diagnóstico
     }
 
