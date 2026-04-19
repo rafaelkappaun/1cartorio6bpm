@@ -12,10 +12,10 @@ from django.db.models.functions import ExtractMonth, ExtractYear, Coalesce, Trun
 from django.db.models.fields import DecimalField
 from django.core.paginator import Paginator
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from .models import (
     DROGAS_CHOICES, GRADUACAO_CHOICES, VARA_CHOICES, CATEGORIA_CHOICES, STATUS_CUSTODIA_CHOICES,
-    Ocorrencia, Material, Noticiado, LoteIncineracao, RegistroHistorico, CaixaIncineracao
+    Ocorrencia, Material, Noticiado, LoteIncineracao, RegistroHistorico, CaixaIncineracao, DrogaConfig, NaturezaPenal
 )
 from . import documentos_services
 
@@ -144,25 +144,37 @@ def formatar_peso_br(valor_gramas):
 def registrar(request):
     if request.method == "POST":
         try:
-            bou = request.POST.get('bou', '').strip()
-            processo = request.POST.get('processo', '').strip()
+            ocorrencia_id = request.POST.get('ocorrencia_id')
+            if ocorrencia_id:
+                ocorrencia = get_object_or_404(Ocorrencia, id=ocorrencia_id)
+                bou = ocorrencia.bou
+            else:
+                bou = request.POST.get('bou', '').strip()
+                processo = request.POST.get('processo', '').strip()
 
-            if Ocorrencia.objects.filter(bou=bou).exists():
-                messages.error(request, f"O BOU {bou} já está cadastrado!")
-                return redirect('cadastro_entrada')
+                if Ocorrencia.objects.filter(bou=bou).exists():
+                    messages.error(request, f"O BOU {bou} já está cadastrado!")
+                    return redirect('cadastro_entrada')
+                    
+                nat_penal = request.POST.get('natureza_penal', '').strip().upper()
+                if nat_penal:
+                    NaturezaPenal.objects.get_or_create(nome=nat_penal, defaults={'tipo': 'TC'})
 
-            # Criação da Ocorrência
-            ocorrencia = Ocorrencia.objects.create(
-                bou=bou,
-                data_registro_bou=request.POST.get('data_registro'),
-                vara=request.POST.get('vara'),
-                processo=processo if processo else None,
-                policial_nome=request.POST.get('policial_nome', '').upper(),
-                policial_graduacao=request.POST.get('policial_graduacao'),
-                rg_policial=request.POST.get('rg_policial'),
-                unidade_origem=request.POST.get('unidade_origem'),
-                criado_por=request.user
-            )
+                # Criação da Ocorrência
+                ocorrencia = Ocorrencia.objects.create(
+                    bou=bou,
+                    data_registro_bou=request.POST.get('data_registro'),
+                    vara=request.POST.get('vara'),
+                    processo=processo if processo else None,
+                    policial_nome=request.POST.get('policial_nome', '').upper(),
+                    policial_graduacao=request.POST.get('policial_graduacao'),
+                    rg_policial=request.POST.get('rg_policial'),
+                    unidade_origem=request.POST.get('unidade_origem'),
+                    batalhao=request.POST.get('batalhao'),
+                    companhia=request.POST.get('companhia'),
+                    natureza_penal=nat_penal,
+                    criado_por=request.user
+                )
 
             # Captura listas do POST
             nomes = request.POST.getlist('nome_noticiado[]')
@@ -194,10 +206,15 @@ def registrar(request):
                     if categoria == 'DINHEIRO':
                         status_inicial = 'AGUARDANDO_GUIA'
 
+                    
+                    subst = substancias[i].upper() if i < len(substancias) and categoria == 'ENTORPECENTE' else None
+                    if subst:
+                        DrogaConfig.objects.get_or_create(nome=subst)
+
                     Material.objects.create(
                         noticiado=noticiado,
                         categoria=categoria,
-                        substancia=substancias[i] if i < len(substancias) and categoria == 'ENTORPECENTE' else None,
+                        substancia=subst,
                         unidade=unidades[i] if i < len(unidades) and categoria == 'ENTORPECENTE' else None,
                         peso_estimado=peso_limpo if categoria == 'ENTORPECENTE' else None,
                         valor_monetario=valor_limpo if categoria == 'DINHEIRO' else None,
@@ -552,14 +569,122 @@ def finalizar_lote_com_eprotocolo(request):
     return redirect('lotes_incineracao')
 
 @login_required
-def cadastro_entrada(request):
+def cadastro_entrada(request, ocorrencia_id=None):
+    ocorrencia_obj = get_object_or_404(Ocorrencia, id=ocorrencia_id) if ocorrencia_id else None
     context = {
         'DROGAS_CHOICES': DROGAS_CHOICES, 
         'VARA_CHOICES': VARA_CHOICES, 
         'GRADUACAO_CHOICES': GRADUACAO_CHOICES,
-        'ano_atual': timezone.now().year
+        'ano_atual': timezone.now().year,
+        'ocorrencia': ocorrencia_obj
     }
     return render(request, 'gestao/cadastro_entrada.html', context)
+
+@login_required
+def api_verificar_ocorrencia(request):
+    bou = request.GET.get('bou', '').strip()
+    if bou:
+        oc = Ocorrencia.objects.filter(bou__icontains=bou).first()
+        if oc:
+            return JsonResponse({'existe': True, 'id': oc.id, 'bou': oc.bou})
+    return JsonResponse({'existe': False})
+
+from django.views.decorators.csrf import csrf_exempt
+import json
+import uuid
+
+@csrf_exempt
+def api_receber_projudi(request):
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            processo = dados.get('processo')
+            
+            if not processo:
+                return JsonResponse({'erro': 'Número do processo não informado.'}, status=400)
+                
+            ocorrencia = Ocorrencia.objects.filter(processo=processo).first()
+            if ocorrencia:
+                return JsonResponse({
+                    'mensagem': 'Processo já existe no Cartório.',
+                    'existe': True,
+                    'url': f'http://127.0.0.1:8000/gestao/cadastro/adicionar/{ocorrencia.id}/'
+                })
+            
+            provisional_bou = f"PROJ-{str(uuid.uuid4())[:8].upper()}"
+            ocorrencia = Ocorrencia.objects.create(
+                bou=provisional_bou,
+                processo=processo,
+                vara='', 
+                natureza_penal=dados.get('natureza', '').upper()
+            )
+            
+            noticiado_nome = dados.get('noticiado', 'NÃO INFORMADO').upper()
+            noticiado = Noticiado.objects.create(ocorrencia=ocorrencia, nome=noticiado_nome)
+            
+            substancia = dados.get('substancia', '').upper()
+            
+            try:
+                peso = str(dados.get('quantidade', '0')).replace(',', '.')
+                peso_float = float(peso)
+            except:
+                peso_float = 0
+            
+            if substancia:
+                # Tenta casar a substancia com um texto aproximado
+                matched = False
+                for c in DROGAS_CHOICES:
+                    if substancia in c[1].upper() or c[1].upper() in substancia:
+                        substancia = c[0]
+                        matched = True
+                        break
+                if not matched:
+                    # Se não vier exato, coloca como MACONHA como default provisorio e anota
+                    ocorrencia.observacao = f"DADOS DO PROJUDI - Substância original: {substancia}"
+                    ocorrencia.save()
+                    substancia = 'MACONHA'
+
+                Material.objects.create(
+                    noticiado=noticiado,
+                    categoria='ENTORPECENTE',
+                    substancia=substancia,
+                    peso_estimado=peso_float,
+                    unidade='G',
+                    status='RECEBIDO'
+                )
+                
+            return JsonResponse({
+                'mensagem': 'Dados importados provisoriamente. Finalize os itens.',
+                'existe': False,
+                'url': f'http://127.0.0.1:8000/gestao/cadastro/adicionar/{ocorrencia.id}/'
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'erro': str(e)}, status=500)
+    return JsonResponse({'erro': 'Método não permitido.'}, status=405)
+
+@login_required
+def api_dados_autocomplete(request):
+    drogas = list(DrogaConfig.objects.values('nome', 'permite_peso', 'permite_unidade'))
+    naturezas = list(NaturezaPenal.objects.values_list('nome', flat=True))
+    unidades = list(Ocorrencia.objects.exclude(unidade_origem='').values_list('unidade_origem', flat=True).distinct())
+    batalhoes = list(Ocorrencia.objects.exclude(batalhao__isnull=True).exclude(batalhao='').values_list('batalhao', flat=True).distinct())
+    cias = list(Ocorrencia.objects.exclude(companhia__isnull=True).exclude(companhia='').values_list('companhia', flat=True).distinct())
+    
+    from django.db import models
+    policiais = list(Ocorrencia.objects.exclude(rg_policial='').values(
+        'rg_policial', 'policial_nome', 'policial_graduacao', 'unidade_origem', 'batalhao', 'companhia'
+    ).annotate(count=models.Count('id')))
+
+    return JsonResponse({
+        'drogas': drogas,
+        'naturezas': naturezas,
+        'unidades': unidades,
+        'batalhoes': batalhoes,
+        'cias': cias,
+        'policiais': policiais
+    })
 
 @login_required
 def lotes_montagem(request):

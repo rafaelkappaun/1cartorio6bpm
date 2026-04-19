@@ -82,8 +82,26 @@
 <form method="POST" action="{% url 'registrar' %}" id="formPrincipal">
     {% csrf_token %}
     
+    <datalist id="naturezasList"></datalist>
+    <datalist id="unidadesList"></datalist>
+    <datalist id="batalhoesList"></datalist>
+    <datalist id="ciasList"></datalist>
+    <datalist id="substanciasList"></datalist>
+    <datalist id="rgsList"></datalist>
+
+    {% if ocorrencia %}
+        <input type="hidden" name="ocorrencia_id" value="{{ ocorrencia.id }}">
+        <div class="alert alert-info border-0 rounded-4 d-flex align-items-center mb-4">
+            <i data-lucide="info" class="me-3"></i>
+            <div>
+                <h6 class="mb-0 fw-bold">Adicionando materiais à apreensão já existente.</h6>
+                <small>BOU: {{ ocorrencia.bou }} | Data do Fato: {{ ocorrencia.data_registro_bou|date:"Y-m-d" }}</small>
+            </div>
+        </div>
+    {% endif %}
+
     <!-- Seção 1: Ocorrência -->
-    <div class="card card-entry overflow-hidden">
+    <div class="card card-entry overflow-hidden {% if ocorrencia %}d-none{% endif %}">
         <div class="card-header bg-light bg-opacity-50 border-bottom p-4 d-flex align-items-center gap-3">
             <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3">
                 <i data-lucide="file-text"></i>
@@ -93,55 +111,72 @@
         
         <div class="card-body p-4 p-lg-5">
             <div class="row g-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label-custom">Data do Registro</label>
-                    <input type="text" name="data_registro" id="data_registro" class="form-control form-control-custom" required>
+                    <input type="text" name="data_registro" id="data_registro" class="form-control form-control-custom" value="{{ ocorrencia.data_registro_bou|date:'Y-m-d'|default:'' }}" {% if not ocorrencia %}required{% endif %}>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label-custom">Número B.O.U</label>
                     <div class="d-flex shadow-sm" style="border-radius: 16px; overflow: hidden;">
-                        <span id="ano_bou_prefix" class="bou-prefix">2026/</span>
-                        <input type="text" name="bou_sequencia" id="bou_sequencia" class="form-control form-control-custom border-start-0" style="border-radius: 0 16px 16px 0;" placeholder="Digitar Número" required>
-                        <input type="hidden" name="bou" id="bou_completo">
+                        <span id="ano_bou_prefix" class="bou-prefix" style="display: flex; align-items: center; padding: 0 15px; background-color: #f1f3f5; font-weight: bold; border-right: 1px solid #dee2e6; color: #495057;">{% if ocorrencia %}{{ ocorrencia.bou|slice:":5" }}{% endif %}</span>
+                        <input type="text" id="bou_sequencia" class="form-control form-control-custom border-start-0" style="border-radius: 0 16px 16px 0;" placeholder="Número" value="{% if ocorrencia %}{{ ocorrencia.bou|slice:'5:' }}{% endif %}" {% if not ocorrencia %}required{% endif %}>
+                        <input type="hidden" name="bou" id="bou_completo" value="{{ ocorrencia.bou|default:'' }}">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label-custom">Nº Projudi (Autos)</label>
-                    <input type="text" name="processo" id="mask_projudi" class="form-control form-control-custom" placeholder="0000000-00...">
+                    <input type="text" name="processo" id="mask_projudi" class="form-control form-control-custom" placeholder="0000000-00..." value="{{ ocorrencia.processo|default:'' }}">
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label-custom">Vara Destino</label>
-                    <select name="vara" class="form-select form-control-custom" required>
-                        <option value="" disabled selected>Selecionar...</option>
-                        {% for valor, nome in VARA_CHOICES %}
-                            <option value="{{ valor }}">{{ nome }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="col-md-4">
+                    <label class="form-label-custom">Natureza Penal (TC/IP)</label>
+                    <input type="text" name="natureza_penal" class="form-control form-control-custom text-uppercase" list="naturezasList" placeholder="Ex: Tráfico de Drogas" value="{{ ocorrencia.natureza_penal|default:'' }}" {% if not ocorrencia %}required{% endif %}>
                 </div>
             </div>
 
             <div class="row g-4 mt-2">
-                <div class="col-md-3">
-                    <label class="form-label-custom">Unidade PM</label>
-                    <select name="unidade_origem" class="form-select form-control-custom" required>
-                        <option value="RPA">RPA</option>
-                        <option value="ROTAM">ROTAM</option>
-                        <option value="ROCAM">ROCAM</option>
-                        <option value="CHOQUE">CHOQUE</option>
-                        <option value="OUTRA">OUTRA</option>
-                    </select>
-                </div>
-                <div class="col-md-9">
-                    <div class="row g-4">
-                        <div class="col-md-4">
-                            <label class="form-label-custom">RG do Policial</label>
-                            <input type="text" name="rg_policial" class="form-control form-control-custom" placeholder="Somente Números" required>
+                <div class="col-md-5">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <label class="form-label-custom">Origem</label>
+                            <input type="text" name="unidade_origem" list="unidadesList" class="form-control form-control-custom text-uppercase" placeholder="RPA" value="{{ ocorrencia.unidade_origem|default:'RPA' }}" {% if not ocorrencia %}required{% endif %}>
                         </div>
-                        <div class="col-md-8">
-                            <label class="form-label-custom">Nome do Policial Entregador</label>
-                            <input type="text" name="policial_nome" class="form-control form-control-custom text-uppercase" placeholder="Nome Completo" required>
+                        <div class="col-4">
+                            <label class="form-label-custom">Batalhão</label>
+                            <input type="text" name="batalhao" list="batalhoesList" class="form-control form-control-custom text-uppercase" placeholder="Ex: 6 BPM" value="{{ ocorrencia.batalhao|default:'' }}">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label-custom">Companhia</label>
+                            <input type="text" name="companhia" list="ciasList" class="form-control form-control-custom text-uppercase" placeholder="Ex: 1 CIA" value="{{ ocorrencia.companhia|default:'' }}">
                         </div>
                     </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label-custom">RG do Policial</label>
+                            <input type="text" name="rg_policial" id="rg_policial" list="rgsList" class="form-control form-control-custom" placeholder="Números" value="{{ ocorrencia.rg_policial|default:'' }}" {% if not ocorrencia %}required{% endif %}>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label-custom">Graduação</label>
+                            <input type="text" name="policial_graduacao" id="policial_graduacao" class="form-control form-control-custom text-uppercase" placeholder="Ex: SD" value="{{ ocorrencia.policial_graduacao|default:'' }}" {% if not ocorrencia %}required{% endif %}>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label-custom">Nome (Apenas Nome Real)</label>
+                            <input type="text" name="policial_nome" id="policial_nome" class="form-control form-control-custom text-uppercase" placeholder="Nome" value="{{ ocorrencia.policial_nome|default:'' }}" {% if not ocorrencia %}required{% endif %}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4 mt-2">
+                <div class="col-md-3">
+                    <label class="form-label-custom">Vara Destino</label>
+                    <select name="vara" class="form-select form-control-custom" {% if not ocorrencia %}required{% endif %}>
+                        <option value="" disabled {% if not ocorrencia %}selected{% endif %}>Selecionar...</option>
+                        {% for valor, nome in VARA_CHOICES %}
+                            <option value="{{ valor }}" {% if ocorrencia.vara == valor %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
         </div>
@@ -191,16 +226,21 @@
                                 <div class="row g-2">
                                     <div class="col-7">
                                         <label class="form-label-custom">Substância</label>
-                                        <select name="substancia[]" class="form-select form-control-custom">
+                                        <select name="substancia[]" class="form-select form-control-custom input-substancia">
                                             {% for v, n in DROGAS_CHOICES %}
                                             <option value="{{ v }}">{{ n }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
                                     <div class="col-5">
-                                        <label class="form-label-custom">Peso (g)</label>
-                                        <input type="text" name="peso_estimado[]" class="form-control form-control-custom mask-peso" placeholder="0,000">
-                                        <input type="hidden" name="unidade[]" value="G">
+                                        <label class="form-label-custom unit-label">Medida</label>
+                                        <div class="d-flex">
+                                            <input type="text" name="peso_estimado[]" class="form-control form-control-custom mask-peso border-end-0" style="border-radius: 16px 0 0 16px;" placeholder="0,000">
+                                            <select name="unidade[]" class="form-select form-control-custom border-start-0 select-unidade" style="border-radius: 0 16px 16px 0; width: 70px; padding: 0 5px;" tabindex="-1">
+                                                <option value="G">g</option>
+                                                <option value="UN">un</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -252,32 +292,113 @@
 <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
 
 <script>
-    // Flatpickr & BOU Year
+    let globalData = {}; // Para armazenar JSON da API
+
+    // Load Autocomplete Data
+    fetch('{% url "api_dados_autocomplete" %}')
+        .then(r => r.json())
+        .then(data => {
+            globalData = data;
+            const populate = (id, items) => {
+                const list = document.getElementById(id);
+                if(list) list.innerHTML = items.map(i => `<option value="${i.nome || i}">`).join('');
+            };
+            populate('naturezasList', data.naturezas);
+            populate('unidadesList', data.unidades);
+            populate('batalhoesList', data.batalhoes);
+            populate('ciasList', data.cias);
+            populate('substanciasList', data.drogas.map(d=>d.nome));
+            
+            const rgList = document.getElementById('rgsList');
+            if(rgList) rgList.innerHTML = data.policiais.map(p => `<option value="${p.rg_policial}">${p.policial_graduacao} ${p.policial_nome} (${p.batalhao})</option>`).join('');
+        });
+
+    // Detectar preenchimento do RG
+    const rgInput = document.getElementById('rg_policial');
+    if (rgInput) {
+        rgInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if(globalData.policiais) {
+                const po = globalData.policiais.find(p => p.rg_policial === val);
+                if(po) {
+                    document.getElementById('policial_nome').value = po.policial_nome;
+                    document.getElementById('policial_graduacao').value = po.policial_graduacao;
+                    document.querySelector('input[name="unidade_origem"]').value = po.unidade_origem;
+                    document.querySelector('input[name="batalhao"]').value = po.batalhao || '';
+                    document.querySelector('input[name="companhia"]').value = po.companhia || '';
+                }
+            }
+        });
+    }
+
+    // Verificar BOU
+    const bouInput = document.getElementById('bou_completo');
+    if(bouInput && !document.querySelector('input[name="ocorrencia_id"]')) {
+        bouInput.addEventListener('focusout', function() {
+            const b = this.value.trim();
+            if(b.length > 3) {
+                fetch(`{% url "api_verificar_ocorrencia" %}?bou=${encodeURIComponent(b)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if(res.existe) {
+                        Swal.fire({
+                            title: 'BOU já registrado!',
+                            text: 'Essa ocorrência já está no sistema. Deseja abri-la para adicionar mais materiais/anexos?',
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sim, editar ocorrência',
+                            cancelButtonText: 'Não, cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = `/gestao/cadastro/adicionar/${res.id}/`;
+                            } else {
+                                bouInput.value = '';
+                                bouInput.focus();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    // Flatpickr & BOU Year Sync
     const anoLabel = document.getElementById('ano_bou_prefix');
     const bSeqInput = document.getElementById('bou_sequencia');
     const bHidden = document.getElementById('bou_completo');
+
+    function updateBou() {
+        if(bSeqInput) {
+            bHidden.value = (anoLabel.innerText || '') + bSeqInput.value;
+        }
+    }
+    if(bSeqInput) {
+        bSeqInput.addEventListener('input', updateBou);
+    }
 
     flatpickr("#data_registro", {
         locale: "pt",
         dateFormat: "Y-m-d",
         altInput: true,
         altFormat: "d/m/Y",
-        defaultDate: "today",
-        onChange: (s, ds) => { 
-            if(ds) { 
-                const year = ds.split('-')[0];
-                anoLabel.innerText = year + '/';
-                updateBou();
+        defaultDate: "{{ ocorrencia.data_registro_bou|date:'Y-m-d'|default:'today' }}",
+        onChange: (selectedDates, dateStr) => { 
+            if(dateStr) { 
+                const year = dateStr.split('-')[0];
+                if(anoLabel) {
+                    anoLabel.innerText = year + '/';
+                    updateBou();
+                }
             } 
         }
     });
-
-    function updateBou() { bHidden.value = (anoLabel.innerText || '') + bSeqInput.value; }
-    bSeqInput.addEventListener('input', updateBou);
     
-    // Init default year
-    anoLabel.innerText = new Date().getFullYear() + '/';
-    updateBou();
+    // Init BOU year on load if not set by django
+    if(anoLabel && !anoLabel.innerText) {
+        const today = new Date();
+        anoLabel.innerText = today.getFullYear() + '/';
+        updateBou();
+    }
 
     // Masking
     function applyMasks(row) {
@@ -296,6 +417,29 @@
         const ent = row.querySelector('.section-entorpecente');
         const ger = row.querySelector('.section-geral');
         const din = row.querySelector('.section-dinheiro');
+        
+        // Setup substance watcher for units
+        const substInput = row.querySelector('.input-substancia');
+        const unidSelect = row.querySelector('.select-unidade');
+        
+        if(substInput && unidSelect) {
+            const updateUnits = (val) => {
+                if(globalData.drogas) {
+                    const drugConfig = globalData.drogas.find(d => d.nome.toUpperCase() === val);
+                    unidSelect.innerHTML = '';
+                    if(!drugConfig || drugConfig.permite_peso) unidSelect.innerHTML += `<option value="G">g</option><option value="KG">kg</option>`;
+                    if(!drugConfig || drugConfig.permite_unidade) unidSelect.innerHTML += `<option value="UN">un</option>`;
+                }
+            };
+            substInput.addEventListener('change', (e) => updateUnits(e.target.value.trim().toUpperCase()));
+            // Inicializar se tiver dados
+            if(globalData.drogas && globalData.drogas.length) {
+                updateUnits(substInput.value.trim().toUpperCase());
+            } else {
+                // Polling caso json não tenha carregado ainda na fileira clone
+                setTimeout(() => updateUnits(substInput.value.trim().toUpperCase()), 500);
+            }
+        }
 
         select.addEventListener('change', () => {
             ent.classList.add('d-none'); ger.classList.add('d-none'); din.classList.add('d-none');
@@ -337,9 +481,8 @@
         }
     });
 
-    // Submit Handling
+    // Form Submit handling (clean masks)
     document.getElementById('formPrincipal').addEventListener('submit', function() {
-        updateBou();
         this.querySelectorAll('.mask-peso, .mask-dinheiro').forEach(i => {
             i.value = i.value.replace(/\./g, '').replace(',', '.');
         });

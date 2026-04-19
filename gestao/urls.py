@@ -13,9 +13,15 @@ urlpatterns = [
     
     # Fluxo Operacional
     path('cadastro/', views.cadastro_entrada, name='cadastro_entrada'),
+    path('cadastro/adicionar/<int:ocorrencia_id>/', views.cadastro_entrada, name='cadastro_adicionar'),
     path('registrar/', views.registrar, name='registrar'),
     path('conferencia/', views.conferencia_lista, name='conferencia_lista'),
     path('conferir/<int:id>/', views.confirmar_conferencia, name='confirmar_conferencia'),
+    
+    # APIs
+    path('api/verificar_ocorrencia/', views.api_verificar_ocorrencia, name='api_verificar_ocorrencia'),
+    path('api/dados_autocomplete/', views.api_dados_autocomplete, name='api_dados_autocomplete'),
+    path('api/receber_projudi/', views.api_receber_projudi, name='api_receber_projudi'),
     
     # Armazenamento e Custódia
     path('custodia/', views.custodia_lista, name='custodia_lista'),

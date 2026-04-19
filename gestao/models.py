@@ -8,6 +8,19 @@ from .constants import (
 
 # --- MODELOS ---
 
+class DrogaConfig(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome da Substância")
+    permite_peso = models.BooleanField(default=True, verbose_name="Aceita Peso (g/kg)")
+    permite_unidade = models.BooleanField(default=False, verbose_name="Aceita Unidades (Pés/Comprimidos)")
+
+    class Meta:
+        verbose_name = "Configuração de Substância"
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
 class AuditoriaModel(models.Model):
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='%(class)s_criado')
     data_criacao = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -104,11 +117,13 @@ class Ocorrencia(AuditoriaModel):
     processo = models.CharField(max_length=30, null=True, blank=True, verbose_name="PROJUDI")
     
     policial_nome = models.CharField(max_length=100, blank=True, null=True)
-    policial_graduacao = models.CharField(max_length=10, choices=GRADUACAO_CHOICES, blank=True, null=True)
+    policial_graduacao = models.CharField(max_length=50, blank=True, null=True)
     rg_policial = models.CharField(max_length=20, blank=True, null=True)
     
-    unidade_origem = models.CharField(max_length=20, choices=UNIDADES_PM_CHOICES, default='RPA')
+    unidade_origem = models.CharField(max_length=100, default='RPA')
     unidade_especifica = models.CharField(max_length=100, blank=True, null=True)
+    batalhao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Batalhão/OM")
+    companhia = models.CharField(max_length=100, blank=True, null=True, verbose_name="Companhia/Pelotão/Equipe")
     
     natureza_penal = models.CharField(max_length=255, blank=True, null=True, verbose_name="Tipos Penais / Natureza", db_index=True)
     data_registro_bou = models.DateField(null=True, blank=True, verbose_name="Data do Fato (BOU)", db_index=True)
@@ -118,6 +133,12 @@ class Ocorrencia(AuditoriaModel):
         if self.policial_nome: 
             self.policial_nome = self.policial_nome.upper()
         super().save(*args, **kwargs)
+        
+    def get_unidade_origem_display(self):
+        return self.unidade_origem or "Indefinida"
+        
+    def get_policial_graduacao_display(self):
+        return self.policial_graduacao or ""
 
     def __str__(self):
         return f"BOU {self.bou}"
@@ -149,7 +170,7 @@ class Material(AuditoriaModel):
     uso_pessoal = models.BooleanField(default=False, verbose_name="Uso Pessoal?")
     peso_estimado = models.DecimalField(max_digits=12, decimal_places=3, blank=True, null=True, verbose_name="Peso Estimado")
     peso_real = models.DecimalField(max_digits=12, decimal_places=3, blank=True, null=True, verbose_name="Peso Real")
-    unidade = models.CharField(max_length=3, choices=UNIDADES_MEDIDA_CHOICES, blank=True, null=True)
+    unidade = models.CharField(max_length=10, blank=True, null=True)
     lote = models.ForeignKey(LoteIncineracao, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiais')
     
     # Específico para Materiais Gerais (Som, Facas, Simulacros, Outros) e Dinheiro
@@ -182,6 +203,9 @@ class Material(AuditoriaModel):
     @property
     def processo(self):
         return self.noticiado.ocorrencia.processo
+
+    def get_unidade_display(self):
+        return self.unidade or ""
 
     def save(self, *args, **kwargs):
         if self.substancia == 'COLHEITA':
