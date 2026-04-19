@@ -52,51 +52,64 @@ def _todos(pattern, texto, flags=re.IGNORECASE):
 # PARSER PRINCIPAL
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
+def _converter_data_extenso(texto):
+    meses = {
+        'janeiro': '01', 'fevereiro': '02', 'mar\u00e7o': '03', 'abril': '04',
+        'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
+        'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+    }
+    m = re.search(r'([a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00e7]+)\s+dias\s+do\s+m\u00eas\s+de\s+([a-z\u00e1\u00ea\u00ed\u00f3\u00fa\u00e7]+)\s+do\s+ano\s+de\s+(\d{4})', texto, re.IGNORECASE)
+    if m:
+        dia_str = m.group(1).lower()
+        dias_map = {'primeiro': '01', 'dois': '02', 'tr\u00eas': '03', 'quatro': '04', 'cinco': '05', 'seis': '06', 'sete': '07', 'oito': '08', 'nove': '09', 'dez': '10', 'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'catorze': '14', 'quinze': '15', 'dezesseis': '16', 'dezessete': '17', 'dezoito': '18', 'dezenove': '19', 'vinte': '20', 'vinte e um': '21', 'vinte e dois': '22', 'vinte e tr\u00eas': '23', 'vinte e quatro': '24', 'vinte e cinco': '25', 'vinte e seis': '26', 'vinte e sete': '27', 'vinte e oito': '28', 'vinte e nove': '29', 'trinta': '30', 'trinta e um': '31'}
+        dia = dias_map.get(dia_str, dia_str.zfill(2) if dia_str.isdigit() else "01")
+        mes = meses.get(m.group(2).lower(), "01")
+        return f"{dia}/{mes}/{m.group(3)}"
+    return ""
+
 def parsear_tc(texto: str) -> dict:
     """
     Recebe o texto bruto do TC e devolve um dicion\u00e1rio estruturado.
-    Tenta extrair m\u00faltiplos noticiados e seus itens apreendidos.
     """
+    # \u2500\u2500 BOU \u2500\u2500 (Suporta YYYY/NNNN e NNNN/YYYY)
+    bou_match = re.search(r'B\.?O\.?U\.?\s*[:\-]?\s*(\d+/\d+)', texto, re.IGNORECASE)
+    bou = bou_match.group(1) if bou_match else ""
+    if bou and '/' in bou:
+        parts = bou.split('/')
+        if len(parts[0]) == 4 and parts[0].startswith('20'): bou = f"{parts[0]}/{parts[1]}"
+        elif len(parts[1]) == 4 and parts[1].startswith('20'): bou = f"{parts[1]}/{parts[0]}"
 
-    # \u2500\u2500 BOU \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    bou = (_primeiro(r'B\.?O\.?U\.?\s*[:\-]?\s*(\d{4}/\d+)', texto) or
-           _primeiro(r'Boletim\s+de\s+Ocorr\u00eancia\s*[:\-]?\s*(\d{4}/\d+)', texto) or
-           _primeiro(r'N[\u00b0\u00ba]?\s*B\.?O\.?\s*[:\-]?\s*(\d{4}/\d+)', texto))
-
-    # \u2500\u2500 DATA DO REGISTRO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # \u2500\u2500 DATA DO REGISTRO \u2500\u2500
     data_registro = (_primeiro(r'Data\s+(?:do\s+)?(?:Registro|fato|ocorr\u00eancia)\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})', texto) or
-                     _primeiro(r'(\d{2}/\d{2}/\d{4})', texto))  # fallback: primeira data
+                     _converter_data_extenso(texto) or
+                     _primeiro(r'(\d{2}/\d{2}/\d{4})', texto))
 
-    # \u2500\u2500 PROCESSO / NUMER DOS AUTOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    processo = (_primeiro(r'(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})', texto) or   # CNJ
-                _primeiro(r'Autos\s*[:\-]?\s*([\d\.\-/]+)', texto) or
-                _primeiro(r'N[\u00b0\u00ba]?\s*Processo\s*[:\-]?\s*([\d\.\-/]+)', texto) or
-                _primeiro(r'Projudi\s*[:\-]?\s*([\d\.\-/]+)', texto))
+    # \u2500\u2500 PROCESSO / NUMER DOS AUTOS \u2500\u2500 (Suporta CNJ com ou sem pontua\u00e7\u00e3o)
+    processo = (_primeiro(r'(\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4})', texto) or   
+                _primeiro(r'Autos\s*[:\-]?\s*([\d\.\-/]+)', texto))
 
-    # \u2500\u2500 VARA \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    vara = (_primeiro(r'(\d+[\u00aa\u00ba]?\s*Vara\s*Criminal)', texto) or
-            _primeiro(r'(JECRIM)', texto) or
-            _primeiro(r'Vara\s*[:\-]?\s*([^\n]+)', texto))
+    # \u2500\u2500 VARA \u2500\u2500
+    vara = (_primeiro(r'(\d+[\u00aa\u00ba]?\s*(?:Juizado|Vara)[^\n,]+)', texto) or
+            _primeiro(r'(JECRIM)', texto))
 
-    # \u2500\u2500 DATA DA AUDI\u00caNCIA \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    data_audiencia = _primeiro(
-        r'(?:Audi[\u00ea\u00e9]ncia|Competi[\u00e7\u00e7][\u00e3\u00e1]o|Designad[ao])\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})', texto)
+    # \u2500\u2500 DATA DA AUDI\u00caNCIA \u2500\u2500
+    data_audiencia = _primeiro(r'em\s+data\s+de\s+(\d{2}/\d{2}/\d{2,4})', texto)
 
-    # \u2500\u2500 NATUREZA PENAL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # \u2500\u2500 NATUREZA PENAL \u2500\u2500
     natureza = (_primeiro(r'Natureza\s*[:\-]?\s*([^\n]+)', texto) or
+                _primeiro(r'fatos\s+notificados\s+como\s+([^\n]+)', texto) or
                 _primeiro(r'(?:Art(?:igo)?\.?\s*\d+[^\n]{0,80})', texto))
 
-    # \u2500\u2500 UNIDADE / BATALH\u00c3O \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # \u2500\u2500 UNIDADE / BATALH\u00c3O \u2500\u2500
     unidade = (_primeiro(r'(\d+[\u00b0\u00ba]?\s*BPM[^\n]*)', texto) or
-               _primeiro(r'Unidade\s*[:\-]?\s*([^\n]+)', texto) or
-               _primeiro(r'Batalh[\u00e3\u00e1]o\s*[:\-]?\s*([^\n]+)', texto))
+               _primeiro(r'P\.?M\.?P\.?R\.?\s*\n\s*([^\n]+)', texto) or
+               _primeiro(r'Unidade\s*[:\-]?\s*([^\n]+)', texto))
 
-    # \u2500\u2500 POLICIAL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    policial_nome = (_primeiro(r'Autua(?:nte|dor)\s*[:\-]?\s*([^\n]+)', texto) or
-                     _primeiro(r'Policial\s*[:\-]?\s*([^\n]+)', texto) or
+    # \u2500\u2500 POLICIAL \u2500\u2500
+    policial_nome = (_primeiro(r'ASSINATURA\s+POLICIAL\s+MILITAR\s*[:\-]?\s*\n\s*([A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5\u00c2\u00ca\u00ce\u00d4\u00db\u00c0\u00c7\s]{5,})', texto) or
                      _primeiro(r'Agente\s*[:\-]?\s*([^\n]+)', texto))
-    policial_graduacao = _primeiro(r'(Soldado|Cabo|Sargento|Subtenente|Tenente|Capit\u00e3o|Major|Coronel|Delegado)', texto)
-    policial_rg = _primeiro(r'RG\s*(?:do\s+)?(?:Policial|Agente|Autuante)\s*[:\-]?\s*([\d\.\-]+)', texto)
+    policial_rg = _primeiro(r'RG\s*(?:do\s+Policial)?\s*[:\-]?\s*([\d\.\-]+)', texto[texto.find('ASSINATURA POLICIAL'):] if 'ASSINATURA POLICIAL' in texto else texto)
+    policial_graduacao = _primeiro(r'(Soldado|Cabo|Sargento|Subtenente|Tenente|Capit\u00e3o|Major|Coronel)', texto)
 
     # \u2500\u2500 NOTICIADOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     # Tenta identificar blocos separados por "NOTICIADO", "AUTUADO", "CONDUTOR", etc.
@@ -105,9 +118,10 @@ def parsear_tc(texto: str) -> dict:
     # \u2500\u2500 ITENS APREENDIDOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     itens = _extrair_itens(texto)
 
-    # \u2500\u2500 OBSERVA\u00c7\u00c3O \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # \u2500\u2500 OBSERVA\u00c7\u00c3O \u2500\u2500
     observacao = (_primeiro(r'Observa[\u00e7\u00e7][\u00e3\u00e3]o\s*[:\-]?\s*([^\n]+(?:\n\s+[^\n]+)*)', texto) or
-                  _primeiro(r'Hist[\u00f3\u00f3]rico\s*[:\-]?\s*([^\n]+(?:\n\s+[^\n]+)*)', texto))
+                  _primeiro(r'Hist[\u00f3\u00f3]rico\s*[:\-]?\s*([^\n]+(?:\n\s+[^\n]+)*)', texto) or
+                  _primeiro(r'DECLARA[\u00c7\u00c7][\u00c3\u00c3]O\s+DO\s+NOTICIADO\s*[:\-]?\s*\n\s*([^\n]+(?:\n\s+[^\n]+)*)', texto))
 
     return {
         'bou': bou,
@@ -132,52 +146,38 @@ def parsear_tc(texto: str) -> dict:
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 def _extrair_noticiados(texto: str) -> list:
-    """
-    Tenta separar blocos de noticiados e extrair nome, RG, CPF de cada um.
-    """
     noticiados = []
+    
+    # Busca por blocos de assinatura ou "eu [NOME]"
+    m_eu = re.search(r'eu\s+([A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5\u00c2\u00ca\u00ce\u00d4\u00db\u00c0\u00c7\s]{10,}),\s*RG[/]PR\s*([\d\.\-]+)', texto)
+    if m_eu:
+        noticiados.append({'nome': m_eu.group(1).strip().title(), 'rg': m_eu.group(2).strip(), 'cpf': '', 'data_nascimento': ''})
 
-    # Palavras-chave que indicam in\u00edcio de bloco de noticiado
-    marcadores = r'(?:NOTICIADO|AUTUADO|CONDUTOR|INDICIADO|R\u00c9U|NOME DO NOTICIADO)'
-    blocos = re.split(marcadores, texto, flags=re.IGNORECASE)
+    # Busca em assinatura do compromissado
+    m_ass = re.search(r'ASSINATURA\s+DO\s+COMPROMISSADO\s*\n\s*([A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5\u00c2\u00ca\u00ce\u00d4\u00db\u00c0\u00c7\s]{10,})\s*\n\s*RG\s*[:\-]?\s*([\d\.\-]+)', texto)
+    if m_ass:
+        nome_ass = m_ass.group(1).strip().title()
+        if not any(n['nome'] == nome_ass for n in noticiados):
+            noticiados.append({'nome': nome_ass, 'rg': m_ass.group(2).strip(), 'cpf': '', 'data_nascimento': ''})
 
-    for bloco in blocos[1:]:  # pula a parte antes do primeiro noticiado
-        linhas = bloco.strip().split('\n')
-        nome = ""
-        rg = ""
-        cpf = ""
-        data_nasc = ""
-
-        for linha in linhas[:20]:  # Analisa as pr\u00f3ximas 20 linhas do bloco
-            linha = linha.strip()
-            if not nome and re.match(r'^[A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5\u00c2\u00ca\u00ce\u00d4\u00db\u00c0\u00c7\s]{5,}$', linha):
-                nome = linha.title()
-            rg_m = re.search(r'RG\s*[:\-]?\s*([\d\.\-]+)', linha, re.IGNORECASE)
-            if rg_m and not rg: rg = rg_m.group(1)
-            cpf_m = re.search(r'CPF\s*[:\-]?\s*([\d\.\-/]+)', linha, re.IGNORECASE)
-            if cpf_m and not cpf: cpf = cpf_m.group(1)
-            dn_m = re.search(r'(?:Nasc|DN|Data de Nasc)\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})', linha, re.IGNORECASE)
-            if dn_m and not data_nasc: data_nasc = dn_m.group(1)
-
-        if nome or rg or cpf:
-            noticiados.append({
-                'nome': nome,
-                'rg': rg,
-                'cpf': cpf,
-                'data_nascimento': data_nasc,
-            })
-
-    # Fallback: se n\u00e3o encontrou blocos, tenta pelo menos o nome ap\u00f3s "Nome:"
     if not noticiados:
-        nomes = _todos(r'(?:Nome|Noticiado)\s*[:\-]\s*([A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5][^\n]{4,50})', texto)
-        rgs = _todos(r'RG\s*[:\-]?\s*([\d\.\-]{5,})', texto)
-        for i, nome in enumerate(nomes):
-            noticiados.append({
-                'nome': nome.title(),
-                'rg': rgs[i] if i < len(rgs) else '',
-                'cpf': '',
-                'data_nascimento': '',
-            })
+        # Palavras-chave que indicam in\u00edcio de bloco de noticiado
+        marcadores = r'(?:NOTICIADO|AUTUADO|CONDUTOR|INDICIADO|R\u00c9U|NOME DO NOTICIADO)'
+        blocos = re.split(marcadores, texto, flags=re.IGNORECASE)
+
+        for bloco in blocos[1:]:  # pula a parte antes do primeiro noticiado
+            linhas = bloco.strip().split('\n')
+            nome = ""; rg = ""; cpf = ""; data_nasc = ""
+            for linha in linhas[:20]:
+                linha = linha.strip()
+                if not nome and re.match(r'^[A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00c3\u00d5\u00c2\u00ca\u00ce\u00d4\u00db\u00c0\u00c7\s]{5,}$', linha):
+                    nome = linha.title()
+                rg_m = re.search(r'RG\s*[:\-]?\s*([\d\.\-]+)', linha, re.IGNORECASE)
+                if rg_m and not rg: rg = rg_m.group(1)
+            if nome or rg:
+                noticiados.append({
+                    'nome': nome, 'rg': rg, 'cpf': cpf, 'data_nascimento': data_nasc,
+                })
 
     return noticiados
 
