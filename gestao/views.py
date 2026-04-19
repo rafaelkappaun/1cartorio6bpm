@@ -326,8 +326,8 @@ def painel_principal(request):
             .annotate(total=Sum('peso_real'))\
             .order_by('mes')
 
-        # Mapeia o resultado para a lista de 12 meses
-        mapa_meses = {item['mes']: float(item['total']) for item in vendas_mes}
+        # Mapeia o resultado para a lista de 12 meses, prevenindo Null e falhas de None
+        mapa_meses = {item['mes']: float(item['total'] or 0) for item in vendas_mes if item['mes']}
         dados_meses = [mapa_meses.get(m, 0.0) if mes_inicio <= m <= mes_fim else 0.0 for m in range(1, 13)]
         
         datasets_evolucao.append({
