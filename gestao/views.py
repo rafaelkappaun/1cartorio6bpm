@@ -620,6 +620,7 @@ def api_receber_projudi(request):
 
             # Monta URL do formulário com dados nos query params (sem gravar nada)
             from urllib.parse import urlencode
+            from django.urls import reverse
             params = {
                 'processo':  processo,
                 'noticiado': dados.get('noticiado', ''),
@@ -629,7 +630,7 @@ def api_receber_projudi(request):
                 'origem':    'projudi',
             }
             query_string = urlencode({k: v for k, v in params.items() if v})
-            url_formulario = request.build_absolute_uri(f'/gestao/cadastro/?{query_string}')
+            url_formulario = request.build_absolute_uri(reverse('cadastro_entrada') + f'?{query_string}')
 
             return JsonResponse({
                 'mensagem': '✅ Dados extraídos! Verifique e confirme o cadastro antes de salvar.',
