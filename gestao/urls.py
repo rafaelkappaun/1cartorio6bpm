@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/verificar_ocorrencia/', views.api_verificar_ocorrencia, name='api_verificar_ocorrencia'),
     path('api/dados_autocomplete/', views.api_dados_autocomplete, name='api_dados_autocomplete'),
     path('api/receber_projudi/', views.api_receber_projudi, name='api_receber_projudi'),
+    path('api/ler_tc/', views.api_ler_tc, name='api_ler_tc'),
     
     # Armazenamento e Custódia
     path('custodia/', views.custodia_lista, name='custodia_lista'),

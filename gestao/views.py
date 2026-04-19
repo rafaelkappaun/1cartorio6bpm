@@ -590,8 +590,56 @@ def api_verificar_ocorrencia(request):
     return JsonResponse({'existe': False})
 
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 import json
 import uuid
+from . import tc_parser
+
+@login_required
+@require_POST
+def api_ler_tc(request):
+    """
+    Recebe um PDF ou DOCX do TC, extrai o texto em memória (sem gravar),
+    e devolve JSON estruturado com todos os dados identificados.
+    """
+    arquivo = request.FILES.get('arquivo')
+    if not arquivo:
+        return JsonResponse({'erro': 'Nenhum arquivo enviado.'}, status=400)
+
+    nome = arquivo.name.lower()
+    conteudo = arquivo.read()  # Lê tudo em memória — arquivo nunca toca o disco
+
+    try:
+        if nome.endswith('.pdf'):
+            texto = tc_parser.extrair_texto_pdf(conteudo)
+        elif nome.endswith('.docx'):
+            texto = tc_parser.extrair_texto_docx(conteudo)
+        else:
+            return JsonResponse({'erro': 'Formato não suportado. Envie PDF ou DOCX.'}, status=400)
+
+        if not texto.strip():
+            return JsonResponse({'erro': 'Não foi possível extrair texto do arquivo. Verifique se o PDF não é uma imagem escaneada.'}, status=400)
+
+        dados = tc_parser.parsear_tc(texto)
+
+        # Verifica se o BOU/processo já existe
+        duplicata = None
+        if dados.get('bou'):
+            oc = Ocorrencia.objects.filter(bou=dados['bou']).first()
+            if oc:
+                duplicata = {'id': oc.id, 'bou': oc.bou}
+        if not duplicata and dados.get('processo'):
+            oc = Ocorrencia.objects.filter(processo=dados['processo']).first()
+            if oc:
+                duplicata = {'id': oc.id, 'bou': oc.bou}
+
+        dados['duplicata'] = duplicata
+        return JsonResponse({'sucesso': True, 'dados': dados})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'erro': f'Erro ao processar arquivo: {str(e)}'}, status=500)
 
 @csrf_exempt
 def api_receber_projudi(request):

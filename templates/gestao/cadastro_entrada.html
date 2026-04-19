@@ -100,6 +100,98 @@
         </div>
     {% endif %}
 
+    <!-- ── BOTÃO IMPORTAR TC ── -->
+    {% if not ocorrencia %}
+    <div class="text-end mb-3">
+        <button type="button" class="btn btn-outline-success rounded-pill px-4" id="btnImportarTC">
+            <i data-lucide="file-scan" class="me-2" style="width:16px;height:16px;"></i>
+            Importar do Termo Circunstanciado (PDF/DOCX)
+        </button>
+    </div>
+
+    <!-- ── MODAL DE IMPORTAÇÃO TC ── -->
+    <div class="modal fade" id="modalImportTC" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#1a3a2a,#2d5a3d);">
+                    <h5 class="modal-title text-white fw-bold">
+                        <i data-lucide="file-scan" class="me-2" style="width:18px;height:18px;"></i>
+                        Importar Termo Circunstanciado
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Upload Area -->
+                    <div id="tcUploadArea" class="border-2 border-dashed rounded-4 p-5 text-center" 
+                         style="border-color:#c5a059!important; border-style:dashed!important; cursor:pointer; transition:all .2s;"
+                         ondragover="event.preventDefault(); this.style.background='#fffbf0'"
+                         ondragleave="this.style.background=''"
+                         ondrop="handleTCDrop(event)">
+                        <i data-lucide="upload-cloud" class="mb-3" style="width:48px;height:48px;color:#c5a059;"></i>
+                        <h6 class="fw-bold">Arraste o PDF ou DOCX aqui</h6>
+                        <p class="text-muted mb-3">ou clique para selecionar</p>
+                        <input type="file" id="tcFileInput" accept=".pdf,.docx" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="document.getElementById('tcFileInput').click()">
+                            Selecionar Arquivo
+                        </button>
+                        <p class="text-muted mt-3 mb-0" style="font-size:.8rem;">
+                            ⚡ O arquivo é processado em memória — <strong>nunca é gravado</strong> no servidor
+                        </p>
+                    </div>
+
+                    <!-- Resultado da leitura -->
+                    <div id="tcResultado" class="d-none mt-4">
+                        <div class="alert alert-success border-0 rounded-3 mb-3" id="tcAlertSucesso">
+                            <strong>✅ TC lido com sucesso!</strong> Verifique os dados abaixo e clique em "Preencher Formulário".
+                        </div>
+                        <div class="alert alert-warning border-0 rounded-3 d-none mb-3" id="tcAlertDuplicata">
+                            <strong>⚠️ BOU/Processo já cadastrado!</strong> <span id="tcDuplicataInfo"></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rounded-3 overflow-hidden" id="tcTabelaDados">
+                                <tbody>
+                                    <tr><th style="width:35%">BOU</th><td><input class="form-control form-control-sm" id="tc_bou"></td></tr>
+                                    <tr><th>Data do Registro</th><td><input class="form-control form-control-sm" id="tc_data"></td></tr>
+                                    <tr><th>Nº Processo / Projudi</th><td><input class="form-control form-control-sm" id="tc_processo"></td></tr>
+                                    <tr><th>Natureza Penal</th><td><input class="form-control form-control-sm" id="tc_natureza"></td></tr>
+                                    <tr><th>Vara</th><td><input class="form-control form-control-sm" id="tc_vara"></td></tr>
+                                    <tr><th>Unidade / Batalhão</th><td><input class="form-control form-control-sm" id="tc_unidade"></td></tr>
+                                    <tr><th>Policial (Nome)</th><td><input class="form-control form-control-sm" id="tc_policial"></td></tr>
+                                    <tr><th>Graduação</th><td><input class="form-control form-control-sm" id="tc_graduacao"></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h6 class="fw-bold mt-3">Noticiados detectados:</h6>
+                        <div id="tcNoticiados" class="mb-3"></div>
+
+                        <h6 class="fw-bold">Itens apreendidos detectados:</h6>
+                        <div id="tcItens" class="mb-3"></div>
+
+                        <details class="mt-2">
+                            <summary class="text-muted" style="cursor:pointer;font-size:.8rem;">Ver texto bruto extraído (diagnóstico)</summary>
+                            <pre id="tcTextoBruto" class="mt-2 p-2 bg-light rounded" style="font-size:.7rem;max-height:200px;overflow:auto;"></pre>
+                        </details>
+                    </div>
+
+                    <!-- Loading -->
+                    <div id="tcLoading" class="d-none text-center py-4">
+                        <div class="spinner-border text-success" style="width:3rem;height:3rem;"></div>
+                        <p class="mt-3 fw-bold">Lendo e interpretando o documento...</p>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 d-none" id="tcModalFooter">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" id="btnPreencherForm">
+                        <i data-lucide="check-circle" class="me-2" style="width:16px;height:16px;"></i>
+                        Preencher Formulário
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Seção 1: Ocorrência -->
     <div class="card card-entry overflow-hidden {% if ocorrencia %}d-none{% endif %}">
         <div class="card-header bg-light bg-opacity-50 border-bottom p-4 d-flex align-items-center gap-3">
@@ -489,66 +581,217 @@
     });
 
     // -------------------------------------------------------
-    // PRÉ-PREENCHIMENTO VIA EXTENSÃO DO PROJUDI
+    // IMPORTAÇÃO DE TERMO CIRCUNSTANCIADO (TC)
     // -------------------------------------------------------
-    (function preencherDadosProjudi() {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('origem') !== 'projudi') return;
+    const modalTC = new bootstrap.Modal(document.getElementById('modalImportTC'));
+    const btnImportarTC = document.getElementById('btnImportarTC');
+    const tcFileInput = document.getElementById('tcFileInput');
+    const btnPreencherForm = document.getElementById('btnPreencherForm');
 
-        // Banner de aviso
-        const banner = document.createElement('div');
-        banner.className = 'alert alert-warning border-0 rounded-4 d-flex align-items-center gap-3 mb-4';
-        banner.style.borderLeft = '4px solid #c5a059';
-        banner.innerHTML = `
-            <span style="font-size:1.6rem">📋</span>
-            <div>
-                <strong>Dados importados do Projudi (extensão Chrome)</strong><br>
-                <small>Confira todos os campos abaixo antes de salvar. Nenhum dado foi gravado ainda.</small>
-            </div>`;
-        const form = document.getElementById('formPrincipal');
-        form.parentElement.insertBefore(banner, form);
+    if (btnImportarTC) {
+        btnImportarTC.addEventListener('click', () => modalTC.show());
+    }
 
-        // Preenche campos da Ocorrência
-        const setVal = (name, val) => {
-            const el = document.querySelector(`[name="${name}"]`);
-            if (el && val) el.value = val;
-        };
+    if (tcFileInput) {
+        tcFileInput.addEventListener('change', e => {
+            if (e.target.files.length) handleTCFile(e.target.files[0]);
+        });
+    }
 
-        setVal('processo', params.get('processo'));
-        setVal('natureza_penal', params.get('natureza'));
+    window.handleTCDrop = function(e) {
+        e.preventDefault();
+        document.getElementById('tcUploadArea').style.background = '';
+        if (e.dataTransfer.files.length) handleTCFile(e.dataTransfer.files[0]);
+    };
 
-        // Noticiado (primeiro campo de nome)
-        const nomeInput = document.querySelector('[name="noticiados_nome[]"]');
-        if (nomeInput && params.get('noticiado')) {
-            nomeInput.value = params.get('noticiado').toUpperCase();
+    let dadosTCGlobal = null;
+
+    async function handleTCFile(file) {
+        const loading = document.getElementById('tcLoading');
+        const uploadArea = document.getElementById('tcUploadArea');
+        const resultado = document.getElementById('tcResultado');
+        const footer = document.getElementById('tcModalFooter');
+
+        uploadArea.classList.add('d-none');
+        loading.classList.remove('d-none');
+        resultado.classList.add('d-none');
+        footer.classList.add('d-none');
+
+        const formData = new FormData();
+        formData.append('arquivo', file);
+
+        try {
+            const response = await fetch('/api/ler_tc/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: formData
+            });
+
+            const res = await response.json();
+            loading.classList.add('d-none');
+
+            if (res.sucesso) {
+                dadosTCGlobal = res.dados;
+                resultado.classList.remove('d-none');
+                footer.classList.remove('d-none');
+
+                // Preenche campos do modal para conferência
+                document.getElementById('tc_bou').value = res.dados.bou || '';
+                document.getElementById('tc_data').value = res.dados.data_registro || '';
+                document.getElementById('tc_processo').value = res.dados.processo || '';
+                document.getElementById('tc_natureza').value = res.dados.natureza_penal || '';
+                document.getElementById('tc_vara').value = res.dados.vara || '';
+                document.getElementById('tc_unidade').value = res.dados.unidade_origem || '';
+                document.getElementById('tc_policial').value = res.dados.policial_nome || '';
+                document.getElementById('tc_graduacao').value = res.dados.policial_graduacao || '';
+                document.getElementById('tcTextoBruto').textContent = res.dados.texto_bruto || '';
+
+                // Noticiados
+                const containerNoticiados = document.getElementById('tcNoticiados');
+                containerNoticiados.innerHTML = res.dados.noticiados.map(n => `
+                    <div class="badge bg-light text-dark border p-2 me-2 mb-2">
+                        ${n.nome} ${n.rg ? `(RG: ${n.rg})` : ''}
+                    </div>
+                `).join('') || '<p class="text-muted small">Nenhum noticiado identificado.</p>';
+
+                // Itens
+                const containerItens = document.getElementById('tcItens');
+                containerItens.innerHTML = res.dados.itens_apreendidos.map(i => `
+                    <div class="alert alert-secondary py-1 px-2 mb-1 small d-flex justify-content-between align-items-center">
+                        <span><strong>${i.categoria}</strong>: ${i.substancia || i.descricao || 'Item'}</span>
+                        <span class="badge bg-dark">${i.quantidade} ${i.unidade}</span>
+                    </div>
+                `).join('') || '<p class="text-muted small">Nenhum item identificado.</p>';
+
+                // Duplicata
+                const alertDup = document.getElementById('tcAlertDuplicata');
+                if (res.dados.duplicata) {
+                    alertDup.classList.remove('d-none');
+                    document.getElementById('tcDuplicataInfo').textContent = `BOU ${res.dados.duplicata.bou} já existe.`;
+                } else {
+                    alertDup.classList.add('d-none');
+                }
+
+                lucide.createIcons();
+            } else {
+                Swal.fire('Erro', res.erro || 'Erro ao ler arquivo', 'error');
+                uploadArea.classList.remove('d-none');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro de conexão com o servidor', 'error');
+            loading.classList.add('d-none');
+            uploadArea.classList.remove('d-none');
         }
+    }
 
-        // Preenche o BOU prefixo com o ano atual se não estiver preenchido
-        const anoEl = document.getElementById('ano_bou_prefix');
-        const bHidden = document.getElementById('bou_completo');
-        if (anoEl && !anoEl.innerText) {
-            anoEl.innerText = new Date().getFullYear() + '/';
-        }
+    if (btnPreencherForm) {
+        btnPreencherForm.addEventListener('click', () => {
+            if (!dadosTCGlobal) return;
 
-        // Observação: substância e quantidade ficam em branco para o usuário escolher corretamente
-        // conforme a categoria real do caso (pode não ser entorpecente)
-        const catSelect = document.querySelector('[name="categorias[]"]');
-        if (catSelect) {
-            // Detecta pela natureza se é entorpecente
-            const natureza = (params.get('natureza') || '').toUpperCase();
-            const ehDroga = natureza.includes('ENTORP') || natureza.includes('TRÁFICO') ||
-                           natureza.includes('TRAFICO') || natureza.includes('DROGA') ||
-                           natureza.includes('PORTE');
+            // 1. Dados da Ocorrência
+            const bouField = document.getElementById('bou_sequencia');
+            const bouHidden = document.getElementById('bou_completo');
+            const bouPrefix = document.getElementById('ano_bou_prefix');
+            
+            if (dadosTCGlobal.bou && dadosTCGlobal.bou.includes('/')) {
+                const parts = dadosTCGlobal.bou.split('/');
+                bouPrefix.innerText = parts[0] + '/';
+                bouField.value = parts[1];
+                updateBou(); // função global do template
+            }
 
-            if (!ehDroga) {
-                // Muda para "OUTROS" e esconde campo de entorpecente
-                catSelect.value = 'OUTROS';
-                catSelect.dispatchEvent(new Event('change'));
+            if (dadosTCGlobal.data_registro) {
+                // Tenta converter DD/MM/YYYY para YYYY-MM-DD
+                const d = dadosTCGlobal.data_registro.split('/');
+                if (d.length === 3) {
+                    const isoDate = `${d[2]}-${d[1]}-${d[0]}`;
+                    const fp = document.querySelector("#data_registro")._flatpickr;
+                    if (fp) fp.setDate(isoDate);
+                }
+            }
+
+            document.getElementById('mask_projudi').value = dadosTCGlobal.processo || '';
+            document.querySelector('[name="natureza_penal"]').value = (dadosTCGlobal.natureza_penal || '').toUpperCase();
+            document.querySelector('[name="vara"]').value = (dadosTCGlobal.vara || '').includes('1') ? 'VARA_01' : 
+                                                            (dadosTCGlobal.vara || '').includes('2') ? 'VARA_02' : 
+                                                            (dadosTCGlobal.vara || '').includes('3') ? 'VARA_03' : '';
+            document.querySelector('[name="unidade_origem"]').value = (dadosTCGlobal.unidade_origem || '').toUpperCase();
+            document.querySelector('[name="policial_nome"]').value = (dadosTCGlobal.policial_nome || '').toUpperCase();
+            document.querySelector('[name="policial_graduacao"]').value = (dadosTCGlobal.policial_graduacao || '').toUpperCase();
+            document.querySelector('[name="policial_rg"]').value = (dadosTCGlobal.policial_rg || '');
+
+            // 2. Noticiados e Materiais
+            const container = document.getElementById('container-materiais');
+            container.innerHTML = ''; // Limpa os atuais para preencher do TC
+
+            if (dadosTCGlobal.noticiados.length === 0) {
+                // Se não achou noticiados, adiciona uma linha vazia padrão
+                document.getElementById('btnAdicionar').click();
+            } else {
+                dadosTCGlobal.noticiados.forEach((not, idx) => {
+                    // Para cada noticiado, vemos se tem itens
+                    const itensDoNoticiado = dadosTCGlobal.itens_apreendidos.filter(it => it.noticiado_idx === idx);
+                    
+                    if (itensDoNoticiado.length === 0) {
+                        // Noticiado sem itens (apenas registro dele)
+                        adicionarLinhaComDados(not, null);
+                    } else {
+                        itensDoNoticiado.forEach(it => {
+                            adicionarLinhaComDados(not, it);
+                        });
+                    }
+                });
+                
+                // Distribui itens sem noticiado definido pros noticiados existentes ou cria novas linhas
+                const itensSemNoticiado = dadosTCGlobal.itens_apreendidos.filter(it => it.noticiado_idx === undefined);
+                itensSemNoticiado.forEach(it => {
+                    adicionarLinhaComDados(dadosTCGlobal.noticiados[0] || {nome:''}, it);
+                });
+            }
+
+            modalTC.hide();
+            Swal.fire({
+                title: 'Importado!',
+                text: 'Dados do TC carregados no formulário. Revise antes de salvar.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        });
+    }
+
+    function adicionarLinhaComDados(noticiado, item) {
+        const container = document.getElementById('container-materiais');
+        const firstRowTemplate = document.querySelector('.item-row'); // Precisamos de um template
+        
+        // Se o container estiver vazio, usa o template oculto ou cria um
+        const btnAdd = document.getElementById('btnAdicionar');
+        btnAdd.click(); // Cria uma nova linha
+        
+        const rows = container.querySelectorAll('.item-row');
+        const lastRow = rows[rows.length - 1];
+
+        // Preenche Noticiado
+        lastRow.querySelector('[name="noticiados_nome[]"]').value = (noticiado.nome || '').toUpperCase();
+        lastRow.querySelector('[name="noticiados_rg[]"]').value = noticiado.rg || '';
+
+        if (item) {
+            const catSelect = lastRow.querySelector('[name="categorias[]"]');
+            catSelect.value = item.categoria || 'ENTORPECENTE';
+            catSelect.dispatchEvent(new Event('change'));
+
+            if (item.categoria === 'ENTORPECENTE') {
+                lastRow.querySelector('.input-substancia').value = item.substancia || '';
+                lastRow.querySelector('.mask-peso').value = (item.quantidade || '0').toString().replace('.', ',');
+                lastRow.querySelector('.select-unidade').value = item.unidade || 'G';
+            } else if (item.categoria === 'DINHEIRO') {
+                lastRow.querySelector('.mask-dinheiro').value = (item.quantidade || '0').toString().replace('.', ',');
+            } else {
+                lastRow.querySelector('[name="descricoes[]"]').value = item.descricao || '';
             }
         }
-
-        console.log("Projudi: pré-preenchimento concluído.", Object.fromEntries(params));
-    })();
+    }
 
 </script>
 {% endblock %}
