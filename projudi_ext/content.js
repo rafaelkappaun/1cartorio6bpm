@@ -89,7 +89,7 @@ btn.addEventListener('click', async () => {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/receber_projudi/', {
+        const response = await fetch('https://1cartorio6bpm.pythonanywhere.com/api/receber_projudi/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
