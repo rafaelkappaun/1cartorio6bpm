@@ -605,10 +605,11 @@ def api_receber_projudi(request):
                 
             ocorrencia = Ocorrencia.objects.filter(processo=processo).first()
             if ocorrencia:
+                url_retorno = request.build_absolute_uri(f'/gestao/cadastro/adicionar/{ocorrencia.id}/')
                 return JsonResponse({
                     'mensagem': 'Processo já existe no Cartório.',
                     'existe': True,
-                    'url': f'http://127.0.0.1:8000/gestao/cadastro/adicionar/{ocorrencia.id}/'
+                    'url': url_retorno
                 })
             
             provisional_bou = f"PROJ-{str(uuid.uuid4())[:8].upper()}"
@@ -653,10 +654,11 @@ def api_receber_projudi(request):
                     status='RECEBIDO'
                 )
                 
+            url_retorno = request.build_absolute_uri(f'/gestao/cadastro/adicionar/{ocorrencia.id}/')
             return JsonResponse({
                 'mensagem': 'Dados importados provisoriamente. Finalize os itens.',
                 'existe': False,
-                'url': f'http://127.0.0.1:8000/gestao/cadastro/adicionar/{ocorrencia.id}/'
+                'url': url_retorno
             })
         except Exception as e:
             import traceback
