@@ -36,8 +36,12 @@ def extrair_texto_docx(file_bytes: bytes) -> str:
 # ─────────────────────────────────────────────
 
 def _primeiro(pattern, texto, flags=re.IGNORECASE):
-    m = re.search(pattern, texto, flags)
-    return m.group(1).strip() if m else ""
+    try:
+        m = re.search(pattern, texto, flags)
+        if not m: return ""
+        return m.group(1).strip() if m.groups() else m.group(0).strip()
+    except IndexError:
+        return m.group(0).strip() if m else ""
 
 
 def _todos(pattern, texto, flags=re.IGNORECASE):
@@ -71,7 +75,7 @@ def parsear_tc(texto: str) -> dict:
 
     # ── VARA ─────────────────────────────────────────────────────────
     vara = (_primeiro(r'(\d+[ªa°]?\s*Vara\s*Criminal)', texto) or
-            _primeiro(r'JECRIM', texto) or
+            _primeiro(r'(JECRIM)', texto) or
             _primeiro(r'Vara\s*[:\-]?\s*([^\n]+)', texto))
 
     # ── DATA DA AUDIÊNCIA ─────────────────────────────────────────────
